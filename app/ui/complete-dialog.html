@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Download Complete</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 11.5px;
+      background: #f0f0f0;
+      color: #222;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .header-icon {
+      width: 36px;
+      height: 36px;
+    }
+    .header-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #15803d;
+    }
+    .file-details {
+      background: #ffffff;
+      border: 1px solid #d0d0d0;
+      border-radius: 2px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      row-gap: 6px;
+      flex: 1;
+    }
+    .label {
+      color: #666;
+      font-weight: 500;
+    }
+    .val {
+      font-weight: 600;
+      color: #111;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .btn {
+      min-width: 85px;
+      padding: 6px 14px;
+      font-size: 11.5px;
+      font-weight: 500;
+      border: 1px solid #8e8e8e;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%);
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: linear-gradient(180deg, #ffffff 0%, #d8e5f2 100%);
+      border-color: #5c8fc2;
+    }
+    .btn-primary {
+      font-weight: 600;
+      border-color: #0078d7;
+      background: linear-gradient(180deg, #f4f9ff 0%, #d3e5f8 100%);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <svg class="header-icon" viewBox="0 0 36 36">
+      <circle cx="18" cy="18" r="16" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+      <path d="M11 18l5 5 9-10" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="header-title">Download Complete!</div>
+      <div style="color: #666; font-size: 11px;">The file was successfully downloaded and assembled.</div>
+    </div>
+  </div>
+
+  <div class="file-details">
+    <div class="label">File name:</div>
+    <div class="val" id="val-name">Loading...</div>
+
+    <div class="label">Size:</div>
+    <div class="val" id="val-size">-</div>
+
+    <div class="label">Save to:</div>
+    <div class="val" id="val-path">-</div>
+
+    <div class="label">URL:</div>
+    <div class="val" id="val-url" style="color: #0066cc;">-</div>
+  </div>
+
+  <div class="footer">
+    <button class="btn btn-primary" id="btn-open">Open</button>
+    <button class="btn" id="btn-open-folder">Open Folder</button>
+    <button class="btn" id="btn-close">Close</button>
+  </div>
+
+  <script src="complete-dialog.js"></script>
+</body>
+</html>

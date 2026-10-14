@@ -1,0 +1,133 @@
+/* IDM Floating Video Downloader Widget */
+
+.idm-video-sniffer-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  font-family: "Segoe UI", -apple-system, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #047857;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  opacity: 0.88;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+
+.idm-video-sniffer-btn:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+}
+
+.idm-btn-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.idm-btn-arrow {
+  margin-left: 5px;
+  font-size: 9px;
+  display: inline-block;
+}
+
+/* Dropdown Menu */
+.idm-sniffer-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  min-width: 170px;
+  padding: 4px 0;
+  z-index: 2147483647;
+  display: none;
+}
+
+.idm-sniffer-dropdown.show {
+  display: block;
+}
+
+.idm-dropdown-item {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.idm-dropdown-item:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.idm-item-quality {
+  font-weight: 600;
+}
+
+.idm-item-type {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-left: 8px;
+}
+
+/* In-Page Notification Toast */
+#idm-inpage-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  background: #0f172a;
+  color: #ffffff;
+  border-left: 4px solid #10b981;
+  border-radius: 6px;
+  padding: 10px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#idm-inpage-toast.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.idm-toast-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #10b981;
+  margin-bottom: 2px;
+}
+
+.idm-toast-msg {
+  font-size: 11px;
+  color: #cbd5e1;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IDM Integration Module</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="header">
+      <img src="icons/icon32.png" class="header-logo" alt="IDM">
+      <div class="header-info">
+        <div class="header-title">IDM Integration Module</div>
+        <div class="header-sub">Internet Download Manager 6.42</div>
+      </div>
+    </div>
+
+    <!-- Status Banner -->
+    <div class="status-card" id="status-card">
+      <div class="status-indicator" id="status-indicator"></div>
+      <div class="status-text">
+        <div id="status-title" style="font-weight: 600;">Connecting to IDM...</div>
+        <div id="status-desc" style="font-size: 10px; color: #64748b;">Checking 127.0.0.1:9462</div>
+      </div>
+    </div>
+
+    <!-- Toggles -->
+    <div class="settings-group">
+      <label class="toggle-row">
+        <span>Capture browser downloads</span>
+        <input type="checkbox" id="chk-intercept" checked>
+      </label>
+
+      <label class="toggle-row">
+        <span>Show video grabber panel</span>
+        <input type="checkbox" id="chk-sniffer" checked>
+      </label>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-group">
+      <button class="action-btn" id="btn-download-page">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M2 13h12M8 2v8M5 7l3 3 3-3"/>
+        </svg>
+        <span>Download all links on this page</span>
+      </button>
+
+      <button class="action-btn" id="btn-open-desktop">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="3" width="12" height="9" rx="1.5"/>
+          <line x1="5" y1="14" x2="11" y2="14"/>
+          <line x1="8" y1="12" x2="8" y2="14"/>
+        </svg>
+        <span>Open IDM Desktop Application</span>
+      </button>
+    </div>
+
+    <div class="footer">
+      <span>IDM Reverse Integration Engine</span>
+      <span>v6.42.18</span>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

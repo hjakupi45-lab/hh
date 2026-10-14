@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Configuration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      font-size: 11.5px;
+      background: #f0f0f0;
+      color: #222;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .tabs-header {
+      display: flex;
+      border-bottom: 1px solid #999;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      padding: 6px 14px;
+      background: #e1e1e1;
+      border: 1px solid #999;
+      border-bottom: none;
+      margin-right: 4px;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+      cursor: pointer;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .tab-btn.active {
+      background: #ffffff;
+      font-weight: 600;
+      position: relative;
+      bottom: -1px;
+      border-bottom: 1px solid #ffffff;
+    }
+    .tab-content {
+      display: none;
+      background: #ffffff;
+      border: 1px solid #c8c8c8;
+      padding: 14px;
+      flex: 1;
+      overflow-y: auto;
+      border-radius: 2px;
+    }
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .form-label {
+      min-width: 130px;
+      color: #333;
+    }
+    .form-input {
+      padding: 4px 6px;
+      border: 1px solid #abadb3;
+      border-radius: 2px;
+      font-size: 11.5px;
+      font-family: inherit;
+    }
+    .btn-browse {
+      padding: 3px 8px;
+      font-size: 11px;
+      border: 1px solid #888;
+      border-radius: 2px;
+      background: #eee;
+      cursor: pointer;
+    }
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn {
+      min-width: 80px;
+      padding: 5px 12px;
+      font-size: 11.5px;
+      font-weight: 500;
+      border: 1px solid #8e8e8e;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%);
+      cursor: pointer;
+    }
+    .btn-primary {
+      font-weight: 600;
+      border-color: #0078d7;
+      background: linear-gradient(180deg, #f4f9ff 0%, #d3e5f8 100%);
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      padding: 6px;
+      border: 1px solid #abadb3;
+      border-radius: 2px;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs-header">
+    <button class="tab-btn active" data-tab="tab-general">General</button>
+    <button class="tab-btn" data-tab="tab-connection">Connection</button>
+    <button class="tab-btn" data-tab="tab-save">Save To</button>
+    <button class="tab-btn" data-tab="tab-types">File Types</button>
+  </div>
+
+  <!-- General Tab -->
+  <div class="tab-content active" id="tab-general">
+    <label class="form-row">
+      <input type="checkbox" id="chk-auto-start">
+      <span>Start downloading immediately when a link is captured</span>
+    </label>
+    <label class="form-row">
+      <input type="checkbox" id="chk-show-progress">
+      <span>Show download progress dialog with segmented connection view</span>
+    </label>
+    <label class="form-row">
+      <input type="checkbox" id="chk-show-complete">
+      <span>Show "Download Complete" dialog when finished</span>
+    </label>
+    <label class="form-row">
+      <input type="checkbox" id="chk-sounds">
+      <span>Play authentic IDM sound chimes (complete / alert)</span>
+    </label>
+    <div class="form-row" style="margin-top: 8px;">
+      <span class="form-label">Integration Port:</span>
+      <input type="number" id="input-port" class="form-input" style="width: 80px;" value="9462" readonly>
+      <span style="color: #666; font-size: 11px;">(Local API for Chrome Extension)</span>
+    </div>
+  </div>
+
+  <!-- Connection Tab -->
+  <div class="tab-content" id="tab-connection">
+    <div class="form-row">
+      <span class="form-label">Connection Type / Speed:</span>
+      <select class="form-input" style="width: 220px;">
+        <option>High Speed: Direct connection (Ethernet/Wi-Fi/Cable)</option>
+        <option>Medium Speed: 3G / 4G / DSL</option>
+        <option>Low Speed: Dial-Up</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Max. connection number:</span>
+      <select id="select-max-segments" class="form-input" style="width: 80px;">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="4">4</option>
+        <option value="8" selected>8</option>
+        <option value="16">16</option>
+        <option value="24">24</option>
+        <option value="32">32</option>
+      </select>
+      <span style="color: #666; font-size: 11px;">(Number of parallel segmented streams)</span>
+    </div>
+    <div class="form-row" style="margin-top: 8px;">
+      <span class="form-label">Default Speed Limit:</span>
+      <input type="number" id="input-speed-limit" class="form-input" style="width: 80px;" value="0">
+      <span style="color: #666; font-size: 11px;">KB/s (0 = Unlimited max speed)</span>
+    </div>
+  </div>
+
+  <!-- Save To Tab -->
+  <div class="tab-content" id="tab-save">
+    <div class="form-row">
+      <span class="form-label">Default Directory:</span>
+      <input type="text" id="dir-general" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-general">Browse...</button>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Compressed:</span>
+      <input type="text" id="dir-compressed" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-compressed">Browse...</button>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Documents:</span>
+      <input type="text" id="dir-documents" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-documents">Browse...</button>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Music:</span>
+      <input type="text" id="dir-music" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-music">Browse...</button>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Programs:</span>
+      <input type="text" id="dir-programs" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-programs">Browse...</button>
+    </div>
+    <div class="form-row">
+      <span class="form-label">Video:</span>
+      <input type="text" id="dir-video" class="form-input" style="flex: 1;" readonly>
+      <button class="btn-browse" data-target="dir-video">Browse...</button>
+    </div>
+  </div>
+
+  <!-- File Types Tab -->
+  <div class="tab-content" id="tab-types">
+    <div style="font-weight: 500; color: #333;">Automatically start downloading the following file types:</div>
+    <textarea id="textarea-types"></textarea>
+    <div style="color: #666; font-size: 10.5px;">Separate extensions with spaces (e.g. 7Z ZIP RAR EXE MP4 PDF). These extensions are automatically intercepted from Google Chrome.</div>
+  </div>
+
+  <div class="footer">
+    <button class="btn btn-primary" id="btn-save">OK</button>
+    <button class="btn" id="btn-cancel">Cancel</button>
+  </div>
+
+  <script src="options-dialog.js"></script>
+</body>
+</html>

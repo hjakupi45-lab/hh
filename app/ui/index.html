@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Internet Download Manager 6.42</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <!-- Windows Menu Bar -->
+  <div class="menu-bar">
+    <div class="menu-item" id="menu-tasks">Tasks</div>
+    <div class="menu-item" id="menu-file">File</div>
+    <div class="menu-item" id="menu-downloads">Downloads</div>
+    <div class="menu-item" id="menu-view">View</div>
+    <div class="menu-item" id="menu-help">Help</div>
+  </div>
+
+  <!-- Iconic IDM Toolbar -->
+  <div class="toolbar">
+    <button class="tool-btn" id="btn-add-url" title="Add new URL to download">
+      <div class="tool-icon" id="icon-add-url"></div>
+      <div class="tool-label">Add URL</div>
+    </button>
+    <button class="tool-btn" id="btn-resume" title="Resume selected download" disabled>
+      <div class="tool-icon" id="icon-resume"></div>
+      <div class="tool-label">Resume</div>
+    </button>
+    <button class="tool-btn" id="btn-stop" title="Stop selected download" disabled>
+      <div class="tool-icon" id="icon-stop"></div>
+      <div class="tool-label">Stop</div>
+    </button>
+    <button class="tool-btn" id="btn-stop-all" title="Stop all active downloads">
+      <div class="tool-icon" id="icon-stop-all"></div>
+      <div class="tool-label">Stop All</div>
+    </button>
+    <button class="tool-btn" id="btn-delete" title="Delete selected download" disabled>
+      <div class="tool-icon" id="icon-delete"></div>
+      <div class="tool-label">Delete</div>
+    </button>
+    <button class="tool-btn" id="btn-delete-all" title="Delete all completed downloads">
+      <div class="tool-icon" id="icon-delete-all"></div>
+      <div class="tool-label">Delete Compl.</div>
+    </button>
+    <div class="tool-separator"></div>
+    <button class="tool-btn" id="btn-options" title="Configuration and Settings">
+      <div class="tool-icon" id="icon-options"></div>
+      <div class="tool-label">Options</div>
+    </button>
+    <button class="tool-btn" id="btn-scheduler" title="Download Scheduler">
+      <div class="tool-icon" id="icon-scheduler"></div>
+      <div class="tool-label">Scheduler</div>
+    </button>
+    <div class="tool-separator"></div>
+    <button class="tool-btn" id="btn-start-queue" title="Start main download queue">
+      <div class="tool-icon" id="icon-start-queue"></div>
+      <div class="tool-label">Start Queue</div>
+    </button>
+    <button class="tool-btn" id="btn-stop-queue" title="Stop queue">
+      <div class="tool-icon" id="icon-stop-queue"></div>
+      <div class="tool-label">Stop Queue</div>
+    </button>
+    <button class="tool-btn" id="btn-grabber" title="Site Grabber / Video Sniffer">
+      <div class="tool-icon" id="icon-grabber"></div>
+      <div class="tool-label">Grabber</div>
+    </button>
+  </div>
+
+  <!-- Main Split Area -->
+  <div class="main-content">
+    <!-- Sidebar: Categories -->
+    <div class="sidebar">
+      <div class="sidebar-header">Categories</div>
+      <div class="category-group">
+        <div class="category-item active" data-category="all">
+          <span id="cat-icon-all"></span>
+          <span>All Downloads</span>
+          <span class="badge" id="badge-all">0</span>
+        </div>
+        <div class="category-item category-subitem" data-category="compressed">
+          <span id="cat-icon-compressed"></span>
+          <span>Compressed</span>
+          <span class="badge" id="badge-compressed">0</span>
+        </div>
+        <div class="category-item category-subitem" data-category="documents">
+          <span id="cat-icon-documents"></span>
+          <span>Documents</span>
+          <span class="badge" id="badge-documents">0</span>
+        </div>
+        <div class="category-item category-subitem" data-category="music">
+          <span id="cat-icon-music"></span>
+          <span>Music</span>
+          <span class="badge" id="badge-music">0</span>
+        </div>
+        <div class="category-item category-subitem" data-category="programs">
+          <span id="cat-icon-programs"></span>
+          <span>Programs</span>
+          <span class="badge" id="badge-programs">0</span>
+        </div>
+        <div class="category-item category-subitem" data-category="video">
+          <span id="cat-icon-video"></span>
+          <span>Video</span>
+          <span class="badge" id="badge-video">0</span>
+        </div>
+      </div>
+
+      <div class="sidebar-header" style="margin-top: 10px;">Status</div>
+      <div class="category-group">
+        <div class="category-item" data-filter="unfinished">
+          <span id="cat-icon-unfinished"></span>
+          <span>Unfinished</span>
+          <span class="badge" id="badge-unfinished">0</span>
+        </div>
+        <div class="category-item" data-filter="finished">
+          <span id="cat-icon-finished"></span>
+          <span>Finished</span>
+          <span class="badge" id="badge-finished">0</span>
+        </div>
+      </div>
+
+      <div class="sidebar-header" style="margin-top: 10px;">Queues</div>
+      <div class="category-group">
+        <div class="category-item" data-filter="queue-main">
+          <span id="cat-icon-queues"></span>
+          <span>Main download queue</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Downloads Grid -->
+    <div class="downloads-container">
+      <div class="table-header">
+        <div class="th col-name">File Name</div>
+        <div class="th col-size">Size</div>
+        <div class="th col-status">Status</div>
+        <div class="th col-time">Time left</div>
+        <div class="th col-speed">Transfer rate</div>
+        <div class="th col-date">Last Try Date</div>
+        <div class="th col-desc">Description</div>
+      </div>
+
+      <div class="table-body" id="downloads-list">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Status Bar -->
+  <div class="status-bar">
+    <div class="status-section">
+      <span id="status-total-count">0 downloads</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-section">
+      <span id="status-active-count">0 active transfers</span>
+    </div>
+    <div class="status-sep"></div>
+    <div class="status-section" style="margin-left: auto;">
+      <span class="indicator-dot"></span>
+      <span style="font-weight: 500;">Chrome Integration: Active (Port 9462)</span>
+    </div>
+  </div>
+
+  <!-- Context Menu (Hidden by default) -->
+  <div id="context-menu" class="context-menu" style="display: none;">
+    <div class="context-menu-item" id="ctx-resume">▶ Resume Download</div>
+    <div class="context-menu-item" id="ctx-pause">⏸ Stop Download</div>
+    <div class="context-menu-item" id="ctx-details">📊 Show Progress Dialog</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-open">📂 Open File</div>
+    <div class="context-menu-item" id="ctx-open-folder">📁 Open Folder</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-copy-link">🔗 Copy Download Link</div>
+    <div class="context-menu-item" id="ctx-redownload">🔄 Redownload</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" id="ctx-delete" style="color: #dc2626;">✖ Remove from List</div>
+    <div class="context-menu-item" id="ctx-delete-file" style="color: #dc2626;">🗑 Delete File & Task</div>
+  </div>
+
+  <script src="assets/icons.js"></script>
+  <script src="assets/sounds.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

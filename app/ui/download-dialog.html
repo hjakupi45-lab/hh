@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Status - IDM</title>
+  <link rel="stylesheet" href="download-dialog.css">
+</head>
+<body>
+  <div class="dialog-container">
+    <!-- Top Details Box -->
+    <div class="info-box">
+      <div class="info-label">File name:</div>
+      <div class="info-value" id="val-filename">Connecting...</div>
+
+      <div class="info-label">Status:</div>
+      <div class="info-value" id="val-status">Connecting to server...</div>
+
+      <div class="info-label">File size:</div>
+      <div class="info-value" id="val-filesize">Unknown</div>
+
+      <div class="info-label">Downloaded:</div>
+      <div class="info-value" id="val-downloaded">0 B (0%)</div>
+
+      <div class="info-label">Transfer rate:</div>
+      <div class="info-value" id="val-speed">0 KB/s</div>
+
+      <div class="info-label">Time left:</div>
+      <div class="info-value" id="val-eta">Calculating...</div>
+
+      <div class="info-label">Resume capability:</div>
+      <div class="info-value" id="val-resume">Yes</div>
+
+      <div class="info-label">URL:</div>
+      <div class="info-value info-url" id="val-url">-</div>
+    </div>
+
+    <!-- Main Green Progress Bar -->
+    <div class="main-progress-section">
+      <div class="progress-header">
+        <span id="label-progress-status">Overall Progress</span>
+        <span id="label-percent">0%</span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+        <div class="progress-bar-text" id="progress-text">0%</div>
+      </div>
+    </div>
+
+    <!-- Iconic Segmented Connection Visualizer -->
+    <div class="segment-box">
+      <div class="segment-header">
+        <div class="seg-col-num">Thread / Part</div>
+        <div class="seg-col-status">Status</div>
+        <div class="seg-col-bytes">Downloaded</div>
+        <div class="seg-col-bar">Segment Progress</div>
+      </div>
+      <div class="segment-list" id="segments-container">
+        <!-- Dynamic Connection rows -->
+      </div>
+    </div>
+
+    <!-- Dialog Footer & Buttons -->
+    <div class="dialog-footer">
+      <div class="speed-limiter-group">
+        <input type="checkbox" id="chk-speed-limiter">
+        <label for="chk-speed-limiter">Speed Limiter</label>
+        <input type="number" id="input-speed-limit" class="speed-input" value="500" min="10" max="100000">
+        <span>KB/s</span>
+      </div>
+
+      <div class="action-buttons">
+        <button class="dialog-btn" id="btn-pause-resume">Pause</button>
+        <button class="dialog-btn" id="btn-cancel">Cancel</button>
+        <button class="dialog-btn btn-primary" id="btn-hide">Hide</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/sounds.js"></script>
+  <script src="download-dialog.js"></script>
+</body>
+</html>
