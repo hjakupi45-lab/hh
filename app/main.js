@@ -11,7 +11,24 @@ let mainWindow = null;
 let tray = null;
 const progressWindows = new Map(); // taskId -> BrowserWindow
 
-// Initialize integration server immediately
+// Enforce single instance: if another instance is already running, focus it and quit
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+app.on('second-instance', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  } else {
+    createMainWindow();
+  }
+});
+
+// Initialize integration server only in the primary instance
 apiServer.start();
 
 function getExtensionPath() {
@@ -139,11 +156,14 @@ function createMainWindow() {
     show: true
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'ui/index.html'));
+  const mainHtmlUrl = pathToFileURL(path.join(__dirname, 'ui/index.html')).href;
+  mainWindow.loadURL(mainHtmlUrl);
   mainWindow.show();
   mainWindow.focus();
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
     if (!storage.settings.firstRunWizardShown) {
       setTimeout(() => {
         openIntegrationWizard();

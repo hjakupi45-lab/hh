@@ -9,7 +9,10 @@
     "dev": "electron app/main.js",
     "generate-icons": "node scripts/generate-icons.js",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis"
+    "dist": "electron-builder --win nsis",
+    "dist:win": "electron-builder --win nsis",
+    "dist:mac": "electron-builder --mac",
+    "dist:all": "npm run dist:win && npm run dist:mac"
   },
   "build": {
     "appId": "com.haris.electronbyharis",
@@ -25,6 +28,13 @@
       {
         "from": "extension",
         "to": "extension",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "bin",
+        "to": "bin",
         "filter": [
           "**/*"
         ]
@@ -44,6 +54,28 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Electron by Haris",
       "runAfterFinish": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "app/ui/assets/icon.png"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   },
   "keywords": [

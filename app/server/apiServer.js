@@ -261,10 +261,6 @@ class ApiServer extends EventEmitter {
       this.broadcast({ type: 'deleted', id });
     });
 
-    this.server.listen(this.port, '127.0.0.1', () => {
-      console.log(`[IDM Engine] Integration API Server listening on http://127.0.0.1:${this.port}`);
-    });
-
     this.server.on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
         console.warn(`[IDM Engine] Port ${this.port} is already in use. Retrying on next port...`);
@@ -273,6 +269,10 @@ class ApiServer extends EventEmitter {
       } else {
         console.error('[IDM Engine] Server error:', err);
       }
+    });
+
+    this.server.listen(this.port, '127.0.0.1', () => {
+      console.log(`[IDM Engine] Integration API Server listening on http://127.0.0.1:${this.port}`);
     });
   }
 

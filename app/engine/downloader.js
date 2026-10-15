@@ -253,6 +253,152 @@ class DownloadTask extends EventEmitter {
     }
   }
 
+  // Unified discovery for standalone yt-dlp executable or Python yt-dlp module
+  static _cachedYtDlpExec = null;
+  static _cachedFFmpegPath = null;
+
+  getYtDlpExecution() {
+    if (DownloadTask._cachedYtDlpExec) return DownloadTask._cachedYtDlpExec;
+
+    const isWin = process.platform === 'win32';
+    const exeName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+
+    // 1. Check bundled binary in resources/bin (packaged app) or workspace/bin (dev)
+    const bundledPaths = [
+      process.resourcesPath ? path.join(process.resourcesPath, 'bin', exeName) : null,
+      path.join(__dirname, '../../bin', exeName),
+      path.join(process.cwd(), 'bin', exeName)
+    ].filter(Boolean);
+
+    for (const p of bundledPaths) {
+      if (fs.existsSync(p)) {
+        console.log(`[yt-dlp] Using bundled standalone binary: ${p}`);
+        DownloadTask._cachedYtDlpExec = { command: p, baseArgs: [] };
+        return DownloadTask._cachedYtDlpExec;
+      }
+    }
+
+    // 2. Check standalone yt-dlp on system PATH or standard install paths
+    const systemPaths = isWin ? [
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python312', 'Scripts', 'yt-dlp.exe'),
+      'yt-dlp.exe',
+      'yt-dlp'
+    ] : [
+      '/opt/homebrew/bin/yt-dlp',
+      '/usr/local/bin/yt-dlp',
+      '/usr/bin/yt-dlp',
+      'yt-dlp'
+    ];
+
+    const { execFileSync } = require('child_process');
+    for (const sysPath of systemPaths) {
+      try {
+        if (sysPath.includes(path.sep) && !fs.existsSync(sysPath)) continue;
+        execFileSync(sysPath, ['--version'], { timeout: 8000, stdio: 'pipe' });
+        console.log(`[yt-dlp] Using system standalone binary: ${sysPath}`);
+        DownloadTask._cachedYtDlpExec = { command: sysPath, baseArgs: [] };
+        return DownloadTask._cachedYtDlpExec;
+      } catch (e) {}
+    }
+
+    // 3. Fallback to Python with -m yt_dlp
+    const pythonExe = this.findPythonWithYtDlp();
+    DownloadTask._cachedYtDlpExec = { command: pythonExe, baseArgs: ['-u', '-m', 'yt_dlp'] };
+    return DownloadTask._cachedYtDlpExec;
+  }
+
+  findPythonWithYtDlp() {
+    const { execFileSync } = require('child_process');
+
+    const candidates = [
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python312', 'python.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python313', 'python.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python311', 'python.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Python', 'Python310', 'python.exe'),
+      '/opt/homebrew/bin/python3',
+      '/usr/local/bin/python3',
+      '/usr/bin/python3',
+      'python3',
+      'python'
+    ];
+
+    for (const pyPath of candidates) {
+      try {
+        if (pyPath.includes(path.sep) && !fs.existsSync(pyPath)) continue;
+        execFileSync(pyPath, ['-m', 'yt_dlp', '--version'], { timeout: 10000, stdio: 'pipe' });
+        console.log(`[yt-dlp] Found Python with yt-dlp: ${pyPath}`);
+        return pyPath;
+      } catch (e) {}
+    }
+
+    console.warn('[yt-dlp] Could not find specific Python with yt-dlp, falling back to "python"');
+    return 'python';
+  }
+
+  findFFmpegBin() {
+    if (DownloadTask._cachedFFmpegPath) return DownloadTask._cachedFFmpegPath;
+
+    const isWin = process.platform === 'win32';
+    const exeName = isWin ? 'ffmpeg.exe' : 'ffmpeg';
+
+    // 1. Check bundled in resources/bin or workspace/bin
+    const bundledPaths = [
+      process.resourcesPath ? path.join(process.resourcesPath, 'bin', exeName) : null,
+      path.join(__dirname, '../../bin', exeName),
+      path.join(process.cwd(), 'bin', exeName)
+    ].filter(Boolean);
+
+    for (const p of bundledPaths) {
+      if (fs.existsSync(p)) {
+        const binDir = path.dirname(p);
+        console.log(`[yt-dlp] Using bundled FFmpeg binary: ${p}`);
+        DownloadTask._cachedFFmpegPath = binDir;
+        return binDir;
+      }
+    }
+
+    // 2. Check WinGet / macOS Homebrew paths
+    if (isWin) {
+      const wingetPkgBase = path.join(
+        process.env.LOCALAPPDATA || '',
+        'Microsoft', 'WinGet', 'Packages',
+        'Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe'
+      );
+      if (fs.existsSync(wingetPkgBase)) {
+        try {
+          const subdirs = fs.readdirSync(wingetPkgBase).filter(d => d.startsWith('ffmpeg-'));
+          if (subdirs.length > 0) {
+            subdirs.sort().reverse();
+            const binDir = path.join(wingetPkgBase, subdirs[0], 'bin');
+            if (fs.existsSync(path.join(binDir, 'ffmpeg.exe'))) {
+              DownloadTask._cachedFFmpegPath = binDir;
+              return binDir;
+            }
+          }
+        } catch (e) {}
+      }
+    } else {
+      const macPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+      for (const mp of macPaths) {
+        if (fs.existsSync(path.join(mp, 'ffmpeg'))) {
+          DownloadTask._cachedFFmpegPath = mp;
+          return mp;
+        }
+      }
+    }
+
+    // 3. Check system PATH
+    const { execFileSync } = require('child_process');
+    try {
+      execFileSync('ffmpeg', ['-version'], { timeout: 5000, stdio: 'pipe' });
+      DownloadTask._cachedFFmpegPath = '';
+      return '';
+    } catch (e) {}
+
+    console.warn('[yt-dlp] FFmpeg not found');
+    return '';
+  }
+
   async startYouTubeDownload() {
     const { spawn } = require('child_process');
     this.status = 'downloading';
@@ -260,21 +406,21 @@ class DownloadTask extends EventEmitter {
     this.directory = storage.getTargetDir('video');
     this.emit('status-change', this.getMeta());
 
-    const ffmpegBin = 'C:\\Users\\H\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0-full_build\\bin';
+    const { command, baseArgs } = this.getYtDlpExecution();
+    const ffmpegBin = this.findFFmpegBin();
     const outTemplate = path.join(this.directory, '%(title)s.%(ext)s');
-    
+
     let args;
     if (this.format === 'audio') {
       args = [
-        '-m', 'yt_dlp',
-        '--ffmpeg-location', ffmpegBin,
-        '--remote-components', 'ejs:github',
-        '--js-runtimes', 'node:node',
+        ...baseArgs,
+        ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-x',
         '--audio-format', 'mp3',
         '--audio-quality', '0',
         '-o', outTemplate,
         '--newline',
+        '--no-mtime',
         this.url
       ];
     } else {
@@ -282,25 +428,30 @@ class DownloadTask extends EventEmitter {
       const formatArg = `bv*[height<=${heightLimit}][ext=mp4]+ba[ext=m4a]/bv*[height<=${heightLimit}]+ba[ext=m4a]/bv*[height<=${heightLimit}]+ba/b[height<=${heightLimit}]/bv*+ba/b`;
 
       args = [
-        '-m', 'yt_dlp',
-        '--ffmpeg-location', ffmpegBin,
-        '--remote-components', 'ejs:github',
-        '--js-runtimes', 'node:node',
+        ...baseArgs,
+        ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-f', formatArg,
         '--merge-output-format', 'mp4',
         '--postprocessor-args', 'Merger:-c:v copy -c:a aac -b:a 192k',
         '-o', outTemplate,
         '--newline',
+        '--no-mtime',
         this.url
       ];
     }
 
+    console.log(`[yt-dlp] Spawning: ${command} ${args.join(' ')}`);
+
     return new Promise((resolve, reject) => {
-      const proc = spawn('python', args);
+      const proc = spawn(command, args);
       this.activeProc = proc;
+      let stderrOutput = '';
+
 
       proc.stdout.on('data', (data) => {
         const text = data.toString();
+        console.log('[yt-dlp stdout]', text.trim());
+
         const percentMatch = text.match(/\[download\]\s+(\d+\.?\d*)%/);
         if (percentMatch) {
           this.percent = parseFloat(percentMatch[1]);
@@ -322,6 +473,16 @@ class DownloadTask extends EventEmitter {
           this.fileName = path.basename(this.filePath);
         }
 
+        const mergerMatch = text.match(/\[Merger\]\s+Merging formats into "(.+)"/);
+        if (mergerMatch) {
+          this.filePath = mergerMatch[1].trim();
+          this.fileName = path.basename(this.filePath);
+          this.status = 'assembling';
+          this.speedStr = 'Converting';
+          this.etaStr = 'Merging AAC audio...';
+          this.emit('status-change', this.getMeta());
+        }
+
         const alreadyMatch = text.match(/\[download\]\s+(.+)\s+has already been downloaded/);
         if (alreadyMatch) {
           this.filePath = alreadyMatch[1].trim();
@@ -333,7 +494,17 @@ class DownloadTask extends EventEmitter {
       });
 
       proc.stderr.on('data', (data) => {
-        console.warn('[yt-dlp]', data.toString());
+        const text = data.toString();
+        stderrOutput += text;
+        console.warn('[yt-dlp stderr]', text.trim());
+      });
+
+      proc.on('error', (err) => {
+        console.error('[yt-dlp] Failed to spawn process:', err.message);
+        this.status = 'error';
+        this.errorMessage = `Failed to start yt-dlp: ${err.message}`;
+        this.emit('status-change', this.getMeta());
+        reject(new Error(this.errorMessage));
       });
 
       proc.on('close', (code) => {
@@ -343,7 +514,9 @@ class DownloadTask extends EventEmitter {
           resolve();
         } else {
           this.status = 'error';
-          this.errorMessage = 'YouTube stream download error';
+          const errorLines = stderrOutput.split('\n').filter(l => l.includes('ERROR')).join('; ');
+          this.errorMessage = errorLines || `yt-dlp exited with code ${code}`;
+          console.error(`[yt-dlp] Process exited with code ${code}. stderr: ${stderrOutput}`);
           this.emit('status-change', this.getMeta());
           reject(new Error(this.errorMessage));
         }
