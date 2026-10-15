@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await fetch('http://127.0.0.1:9462/focus', { method: 'POST' });
       window.close();
     } catch (e) {
-      alert('Electron by Haris Desktop is not running. Please start it using "start-idm.bat"!');
+      alert('Electron by Haris Desktop is not running. Please start it using "start-electron.bat"!');
     }
   });
 });

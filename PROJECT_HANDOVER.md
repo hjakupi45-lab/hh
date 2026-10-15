@@ -75,7 +75,7 @@ This project is a 100% faithful, high-performance replica of the classic **Inter
 c:\Users\H\Desktop\IDM REVERSE\
 │
 ├── package.json                 # Project configuration & dependencies
-├── start-idm.bat                # One-click Windows batch launcher
+├── start-electron.bat           # One-click Windows batch launcher
 ├── CHAT_HISTORY.md              # Export of conversation history and milestones
 ├── PROJECT_HANDOVER.md          # Comprehensive technical documentation (this file)
 │
@@ -200,7 +200,7 @@ c:\Users\H\Desktop\IDM REVERSE\
 ## 6. How to Run and Test
 
 ### 6.1. Running the Desktop Application
-* Double-click `start-idm.bat` in the workspace root, or run:
+* Double-click `start-electron.bat` in the workspace root, or run:
   ```bash
   npm start
   ```
@@ -247,7 +247,7 @@ node scripts/test-resume.js
 
 ### 8.1. Project Renamed to "Electron by Haris"
 * `package.json`: updated `name` to `electron-by-haris` and `productName` to `Electron by Haris`.
-* `start-idm.bat`: batch title and startup banners updated to `Electron by Haris`.
+* `start-electron.bat`: batch title and startup banners updated to `Electron by Haris`.
 * All Electron window titles, dashboard headers, options, add URL, and completion dialogs updated to `Electron by Haris`.
 * Chrome Extension manifest, popup, background service worker, and context menus updated to `Electron by Haris`.
 
