@@ -6,6 +6,21 @@ const path = require('path');
 const EventEmitter = require('events');
 const storage = require('./storage');
 
+// Persistent Keep-Alive socket pools to eliminate TCP/TLS handshake overhead
+const httpKeepAliveAgent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  maxFreeSockets: 32,
+  keepAliveMsecs: 60000
+});
+
+const httpsKeepAliveAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 64,
+  maxFreeSockets: 32,
+  keepAliveMsecs: 60000
+});
+
 class DownloadTask extends EventEmitter {
   constructor(options) {
     super();
@@ -129,7 +144,8 @@ class DownloadTask extends EventEmitter {
           port: parsedUrl.port || (isHttps ? 443 : 80),
           path: parsedUrl.pathname + parsedUrl.search,
           method: 'GET',
-          headers: this.buildHeaders({ 'Range': 'bytes=0-0' }) // test Range support immediately
+          headers: this.buildHeaders({ 'Range': 'bytes=0-0' }), // test Range support immediately
+          agent: isHttps ? httpsKeepAliveAgent : httpKeepAliveAgent
         };
 
         const req = client.request(options, (res) => {
@@ -352,16 +368,67 @@ class DownloadTask extends EventEmitter {
     return newPath;
   }
 
+  tryDynamicSplitSegment() {
+    if (this.isPaused || this.isCancelled) return null;
+
+    // Minimum remaining bytes required to justify a dynamic split (256 KB)
+    const MIN_SPLIT_THRESHOLD = 256 * 1024;
+
+    let bestCandidate = null;
+    let maxRemaining = 0;
+
+    for (const seg of this.segments) {
+      if (seg.status === 'downloading') {
+        const currentPos = seg.start + seg.downloaded;
+        const remaining = seg.end - currentPos + 1;
+        if (remaining >= MIN_SPLIT_THRESHOLD && remaining > maxRemaining) {
+          maxRemaining = remaining;
+          bestCandidate = seg;
+        }
+      }
+    }
+
+    if (!bestCandidate) return null;
+
+    // Split the largest remaining portion in half
+    const currentPos = bestCandidate.start + bestCandidate.downloaded;
+    const splitPoint = currentPos + Math.floor(maxRemaining / 2);
+    const originalEnd = bestCandidate.end;
+
+    // Shrink active candidate segment end to splitPoint - 1
+    bestCandidate.end = splitPoint - 1;
+    bestCandidate.total = (bestCandidate.end - bestCandidate.start) + 1;
+
+    // Create new sub-segment for the second half
+    const newIndex = this.segments.length;
+    const newPartFile = path.join(this.tempDir, `part_${newIndex}.idm`);
+    const newSeg = {
+      index: newIndex,
+      start: splitPoint,
+      end: originalEnd,
+      total: (originalEnd - splitPoint) + 1,
+      downloaded: 0,
+      partFile: newPartFile,
+      status: 'pending'
+    };
+
+    this.segments.push(newSeg);
+    this.emit('progress', this.getMeta());
+
+    return newSeg;
+  }
+
   async startSegmentedDownload() {
-    const numSegments = Math.min(this.maxSegments, 32);
-    const chunkSize = Math.floor(this.totalBytes / numSegments);
+    const numWorkers = Math.min(this.maxSegments, 32);
+    const initialSegmentsCount = Math.min(numWorkers, Math.max(1, Math.floor(this.totalBytes / (512 * 1024))));
+    const chunkSize = Math.floor(this.totalBytes / initialSegmentsCount);
 
     // Initialize segments if not already created
     if (this.segments.length === 0) {
       this.segments = [];
-      for (let i = 0; i < numSegments; i++) {
+      for (let i = 0; i < initialSegmentsCount; i++) {
         const start = i * chunkSize;
-        const end = (i === numSegments - 1) ? this.totalBytes - 1 : (start + chunkSize - 1);
+        const end = (i === initialSegmentsCount - 1) ? this.totalBytes - 1 : (start + chunkSize - 1);
         const partFile = path.join(this.tempDir, `part_${i}.idm`);
         
         let existingDownloaded = 0;
@@ -380,7 +447,7 @@ class DownloadTask extends EventEmitter {
         });
       }
     } else {
-      // Sync from disk
+      // Sync from disk (e.g. on resume)
       let totalDownloaded = 0;
       for (const seg of this.segments) {
         if (fs.existsSync(seg.partFile)) {
@@ -396,12 +463,36 @@ class DownloadTask extends EventEmitter {
 
     if (!this.activeStreams) this.activeStreams = [];
 
-    const segmentPromises = this.segments.map(seg => this.downloadSegment(seg));
-    await Promise.all(segmentPromises);
+    // Worker pool: numWorkers run concurrently, pulling pending chunks or dynamically splitting active ones!
+    const runWorker = async (workerId) => {
+      while (!this.isPaused && !this.isCancelled) {
+        // 1. Check for any pending segment
+        let seg = this.segments.find(s => s.status === 'pending');
+
+        // 2. If no pending segment, attempt Dynamic File Segmentation (IDM patented logic)
+        if (!seg) {
+          seg = this.tryDynamicSplitSegment();
+        }
+
+        // 3. If still nothing to split, this worker has no more work to do
+        if (!seg) {
+          break;
+        }
+
+        await this.downloadSegment(seg);
+      }
+    };
+
+    const workers = [];
+    for (let w = 0; w < numWorkers; w++) {
+      workers.push(runWorker(w));
+    }
+
+    await Promise.all(workers);
 
     if (this.isPaused || this.isCancelled) return;
 
-    // All segments completed! Assemble file
+    // All segments completed! Assemble file in exact linear byte sequence
     await this.assembleParts();
   }
 
@@ -431,7 +522,8 @@ class DownloadTask extends EventEmitter {
         port: parsedUrl.port || (isHttps ? 443 : 80),
         path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
-        headers
+        headers,
+        agent: isHttps ? httpsKeepAliveAgent : httpKeepAliveAgent
       };
 
       seg.status = 'downloading';
@@ -441,6 +533,16 @@ class DownloadTask extends EventEmitter {
       });
       if (!this.activeStreams) this.activeStreams = [];
       this.activeStreams.push(fileStream);
+
+      let isFinished = false;
+      const markDone = () => {
+        if (!isFinished) {
+          isFinished = true;
+          seg.status = 'done';
+          try { fileStream.close(); } catch {}
+          resolve();
+        }
+      };
 
       const req = client.request(options, (res) => {
         if (res.statusCode !== 206 && res.statusCode !== 200) {
@@ -452,23 +554,35 @@ class DownloadTask extends EventEmitter {
         res.on('data', (chunk) => {
           if (this.isPaused || this.isCancelled) {
             req.destroy();
-            fileStream.close();
-            return;
+            return markDone();
           }
 
-          seg.downloaded += chunk.length;
-          this.downloadedBytes += chunk.length;
-          this.speedSampleBytes += chunk.length;
+          // Handle dynamic split: don't write past seg.total
+          const needed = seg.total - seg.downloaded;
+          if (needed <= 0) {
+            req.destroy();
+            return markDone();
+          }
+
+          const toWrite = chunk.length > needed ? chunk.slice(0, needed) : chunk;
+          fileStream.write(toWrite);
+
+          seg.downloaded += toWrite.length;
+          this.downloadedBytes += toWrite.length;
+          this.speedSampleBytes += toWrite.length;
+
+          if (seg.downloaded >= seg.total) {
+            req.destroy();
+            return markDone();
+          }
         });
 
-        res.pipe(fileStream);
+        res.on('end', () => {
+          markDone();
+        });
 
         fileStream.on('finish', () => {
-          fileStream.close();
-          if (seg.downloaded >= seg.total) {
-            seg.status = 'done';
-          }
-          resolve();
+          markDone();
         });
 
         fileStream.on('error', (err) => {
@@ -480,13 +594,15 @@ class DownloadTask extends EventEmitter {
       this.activeRequests.push(req);
 
       req.on('error', (err) => {
-        if (this.isPaused || this.isCancelled) return resolve();
+        if (this.isPaused || this.isCancelled || isFinished) return resolve();
         seg.status = 'error';
         reject(err);
       });
 
       req.setTimeout(30000, () => {
-        req.destroy(new Error(`Segment ${seg.index} timeout`));
+        if (!isFinished) {
+          req.destroy(new Error(`Segment ${seg.index} timeout`));
+        }
       });
 
       req.end();
@@ -516,7 +632,8 @@ class DownloadTask extends EventEmitter {
         port: parsedUrl.port || (isHttps ? 443 : 80),
         path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
-        headers
+        headers,
+        agent: isHttps ? httpsKeepAliveAgent : httpKeepAliveAgent
       };
 
       const fileStream = fs.createWriteStream(tempFile, {
@@ -582,7 +699,10 @@ class DownloadTask extends EventEmitter {
 
     const outStream = fs.createWriteStream(this.filePath);
 
-    for (const seg of this.segments) {
+    // CRITICAL: Sort all dynamically split segments by starting byte offset
+    const sortedSegments = [...this.segments].sort((a, b) => a.start - b.start);
+
+    for (const seg of sortedSegments) {
       if (fs.existsSync(seg.partFile)) {
         await new Promise((res, rej) => {
           const inStream = fs.createReadStream(seg.partFile);
