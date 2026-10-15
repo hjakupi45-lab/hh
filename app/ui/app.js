@@ -398,6 +398,13 @@ function setupEventListeners() {
     window.idmApi.openAddUrlDialog();
   });
 
+  const btnBrowserSetup = document.getElementById('btn-browser-setup');
+  if (btnBrowserSetup) {
+    btnBrowserSetup.addEventListener('click', () => {
+      window.idmApi.openIntegrationWizard();
+    });
+  }
+
   // Context Menu Actions
   document.getElementById('ctx-resume').addEventListener('click', () => {
     if (selectedTaskId) window.idmApi.startDownload(selectedTaskId);

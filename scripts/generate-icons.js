@@ -121,12 +121,12 @@ function generateIdmPng(size) {
 }
 
 // Generate icons
-const sizes = [16, 32, 48, 128];
+const sizes = [16, 32, 48, 128, 256];
 sizes.forEach(sz => {
   const buf = generateIdmPng(sz);
   fs.writeFileSync(path.join(__dirname, '..', 'extension', 'icons', `icon${sz}.png`), buf);
 });
 
-// App icon
-fs.writeFileSync(path.join(__dirname, '..', 'app', 'ui', 'assets', 'icon.png'), generateIdmPng(128));
-console.log('Successfully generated all IDM icons!');
+// App icon (256x256 for Windows NSIS compatibility)
+fs.writeFileSync(path.join(__dirname, '..', 'app', 'ui', 'assets', 'icon.png'), generateIdmPng(256));
+console.log('Successfully generated all IDM icons including 256x256 Windows installer icon!');

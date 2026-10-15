@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld('idmApi', {
   closeCurrentWindow: () => ipcRenderer.invoke('close-current-window'),
   minimizeCurrentWindow: () => ipcRenderer.invoke('minimize-current-window'),
 
+  // Browser Integration & Setup Wizard
+  detectBrowsers: () => ipcRenderer.invoke('detect-browsers'),
+  integrateBrowser: (browserId) => ipcRenderer.invoke('integrate-browser', browserId),
+  getExtensionPath: () => ipcRenderer.invoke('get-extension-path'),
+  openExtensionFolder: () => ipcRenderer.invoke('open-extension-folder'),
+  openIntegrationWizard: () => ipcRenderer.invoke('open-integration-wizard'),
+  setWindowsAutoStart: (enable) => ipcRenderer.invoke('set-windows-auto-start', enable),
+
   // Sound effects
   playChime: (type) => ipcRenderer.invoke('play-chime', type),
 

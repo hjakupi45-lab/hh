@@ -29,6 +29,7 @@ class StorageManager {
       autoStartDownload: true,
       showDownloadProgressDialog: true,
       showDownloadCompleteDialog: true,
+      firstRunWizardShown: false,
       port: 9462,
       interceptExtensions: [
         '3GP', '7Z', 'AAC', 'ACE', 'AIF', 'APK', 'ARJ', 'ASF', 'AVI', 'BIN',

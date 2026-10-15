@@ -7,14 +7,57 @@
   "scripts": {
     "start": "electron app/main.js",
     "dev": "electron app/main.js",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win nsis"
   },
-  "keywords": [],
-  "author": "",
+  "build": {
+    "appId": "com.haris.electronbyharis",
+    "productName": "Electron by Haris",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "extension",
+        "to": "extension",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "app/ui/assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Electron by Haris",
+      "runAfterFinish": true
+    }
+  },
+  "keywords": [
+    "download-manager",
+    "idm",
+    "segmented-download",
+    "electron"
+  ],
+  "author": "Haris",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^44.7.2"
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "cors": "^2.8.6",

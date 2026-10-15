@@ -75,6 +75,13 @@ async function init() {
   document.getElementById('btn-cancel').addEventListener('click', () => {
     window.idmApi.closeCurrentWindow();
   });
+
+  const btnOpenWizard = document.getElementById('btn-open-wizard');
+  if (btnOpenWizard) {
+    btnOpenWizard.addEventListener('click', () => {
+      window.idmApi.openIntegrationWizard();
+    });
+  }
 }
 
 init();

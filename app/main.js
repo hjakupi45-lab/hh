@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, dialog, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const downloadManager = require('./engine/downloader');
 const storage = require('./engine/storage');
@@ -11,6 +13,114 @@ const progressWindows = new Map(); // taskId -> BrowserWindow
 
 // Initialize integration server immediately
 apiServer.start();
+
+function getExtensionPath() {
+  if (app.isPackaged) {
+    const packagedExt = path.join(process.resourcesPath, 'extension');
+    if (fs.existsSync(packagedExt)) return packagedExt;
+  }
+  return path.join(__dirname, '../extension');
+}
+
+function detectInstalledBrowsers() {
+  const localAppData = process.env.LOCALAPPDATA || '';
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+  const browserDefinitions = [
+    {
+      id: 'chrome',
+      name: 'Google Chrome',
+      icon: '🌐',
+      paths: [
+        path.join(programFiles, 'Google/Chrome/Application/chrome.exe'),
+        path.join(programFilesX86, 'Google/Chrome/Application/chrome.exe'),
+        path.join(localAppData, 'Google/Chrome/Application/chrome.exe')
+      ],
+      extensionUrl: 'chrome://extensions'
+    },
+    {
+      id: 'edge',
+      name: 'Microsoft Edge',
+      icon: '🌊',
+      paths: [
+        path.join(programFilesX86, 'Microsoft/Edge/Application/msedge.exe'),
+        path.join(programFiles, 'Microsoft/Edge/Application/msedge.exe'),
+        path.join(localAppData, 'Microsoft/Edge/Application/msedge.exe')
+      ],
+      extensionUrl: 'edge://extensions'
+    },
+    {
+      id: 'brave',
+      name: 'Brave Browser',
+      icon: '🦁',
+      paths: [
+        path.join(programFiles, 'BraveSoftware/Brave-Browser/Application/brave.exe'),
+        path.join(programFilesX86, 'BraveSoftware/Brave-Browser/Application/brave.exe'),
+        path.join(localAppData, 'BraveSoftware/Brave-Browser/Application/brave.exe')
+      ],
+      extensionUrl: 'brave://extensions'
+    },
+    {
+      id: 'opera',
+      name: 'Opera / Opera GX',
+      icon: '🔴',
+      paths: [
+        path.join(localAppData, 'Programs/Opera/opera.exe'),
+        path.join(localAppData, 'Programs/Opera GX/opera.exe'),
+        path.join(programFiles, 'Opera/opera.exe'),
+        path.join(programFilesX86, 'Opera/opera.exe')
+      ],
+      extensionUrl: 'opera://extensions'
+    },
+    {
+      id: 'firefox',
+      name: 'Mozilla Firefox',
+      icon: '🦊',
+      paths: [
+        path.join(programFiles, 'Mozilla Firefox/firefox.exe'),
+        path.join(programFilesX86, 'Mozilla Firefox/firefox.exe')
+      ],
+      extensionUrl: 'about:addons'
+    }
+  ];
+
+  return browserDefinitions.map(b => {
+    const foundPath = b.paths.find(p => fs.existsSync(p));
+    return {
+      id: b.id,
+      name: b.name,
+      icon: b.icon,
+      installed: !!foundPath,
+      exePath: foundPath || null,
+      extensionUrl: b.extensionUrl
+    };
+  });
+}
+
+function openIntegrationWizard() {
+  const wizWin = new BrowserWindow({
+    width: 680,
+    height: 600,
+    minWidth: 620,
+    minHeight: 520,
+    resizable: true,
+    parent: mainWindow,
+    modal: false,
+    title: 'Browser Integration Setup - Electron by Haris',
+    icon: path.join(__dirname, 'ui/assets/icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  wizWin.setMenu(null);
+  wizWin.loadFile(path.join(__dirname, 'ui/integration-wizard.html'));
+  wizWin.show();
+  wizWin.focus();
+}
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -32,6 +142,14 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, 'ui/index.html'));
   mainWindow.show();
   mainWindow.focus();
+
+  mainWindow.once('ready-to-show', () => {
+    if (!storage.settings.firstRunWizardShown) {
+      setTimeout(() => {
+        openIntegrationWizard();
+      }, 700);
+    }
+  });
 
   mainWindow.on('close', (e) => {
     if (!app.isQuitting) {
@@ -283,6 +401,58 @@ ipcMain.handle('close-current-window', (event) => {
 ipcMain.handle('minimize-current-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) win.minimize();
+});
+
+// Browser Integration & Setup Wizard IPC Handlers
+ipcMain.handle('detect-browsers', () => {
+  return detectInstalledBrowsers();
+});
+
+ipcMain.handle('get-extension-path', () => {
+  return getExtensionPath();
+});
+
+ipcMain.handle('open-extension-folder', async () => {
+  const extPath = getExtensionPath();
+  if (fs.existsSync(extPath)) {
+    await shell.openPath(extPath);
+  }
+});
+
+ipcMain.handle('integrate-browser', async (event, browserId) => {
+  const browsers = detectInstalledBrowsers();
+  const target = browsers.find(b => b.id === browserId);
+  const extPath = getExtensionPath();
+
+  // 1. Open extension folder in Explorer
+  if (fs.existsSync(extPath)) {
+    shell.openPath(extPath);
+  }
+
+  // 2. Launch browser directly to extensions management page
+  if (target && target.exePath) {
+    try {
+      spawn(target.exePath, [target.extensionUrl], { detached: true, stdio: 'ignore' }).unref();
+    } catch (e) {
+      shell.openExternal(target.extensionUrl);
+    }
+  } else if (target) {
+    shell.openExternal(target.extensionUrl);
+  }
+
+  return true;
+});
+
+ipcMain.handle('open-integration-wizard', () => {
+  openIntegrationWizard();
+});
+
+ipcMain.handle('set-windows-auto-start', (event, enable) => {
+  app.setLoginItemSettings({
+    openAtLogin: enable,
+    path: process.execPath
+  });
+  return true;
 });
 
 // Broadcast helper to all renderer windows
