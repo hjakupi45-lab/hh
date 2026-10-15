@@ -53,7 +53,7 @@ async function initDialog() {
 
 function updateUI(task) {
   currentTask = task;
-  document.title = `${task.percent}% of ${task.fileName} - IDM`;
+  document.title = `${task.percent}% of ${task.fileName} - Electron by Haris`;
 
   document.getElementById('val-filename').textContent = task.fileName || 'Connecting...';
   

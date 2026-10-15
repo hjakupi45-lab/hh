@@ -59,13 +59,18 @@ async function testExtensionIntegration() {
     downloadManager.deleteTask(t.id, false);
   }
 
+  await new Promise(r => {
+    ws.on('close', r);
+    ws.close();
+  });
   apiServer.stop();
-  ws.terminate();
-  console.log('Extension <-> IDM Desktop integration test PASSED 100%!');
+  console.log('Extension <-> Electron by Haris Desktop integration test PASSED 100%!');
 }
 
 testExtensionIntegration()
-  .then(() => process.exit(0))
+  .then(() => {
+    setTimeout(() => process.exit(0), 50);
+  })
   .catch(err => {
     console.error('Integration test failed:', err);
     process.exit(1);

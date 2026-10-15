@@ -240,3 +240,20 @@ node scripts/test-resume.js
    - Package Firefox extension (WebExtensions manifest) and Edge add-on.
 4. **Site-Specific Logins:**
    - Store site credentials in `storage.js` for password-protected HTTP/FTP servers.
+
+---
+
+## 8. Update: "Electron by Haris" & In-Browser Download UI
+
+### 8.1. Project Renamed to "Electron by Haris"
+* `package.json`: updated `name` to `electron-by-haris` and `productName` to `Electron by Haris`.
+* `start-idm.bat`: batch title and startup banners updated to `Electron by Haris`.
+* All Electron window titles, dashboard headers, options, add URL, and completion dialogs updated to `Electron by Haris`.
+* Chrome Extension manifest, popup, background service worker, and context menus updated to `Electron by Haris`.
+
+### 8.2. In-Page Browser Download Modal (`extension/content.js` & `content.css`)
+* **Immediate Interactive UI**: Clicking "Download with Electron by Haris" or clicking any downloadable link in the browser instantly displays the **Electron by Haris In-Page Download Modal**.
+* **Pre-Download Confirmation**: Users can edit the file name, select video quality pills (1080p Full HD, 720p HD, 480p SD, 360p, MP3 Audio), and adjust the category before downloading.
+* **Live In-Browser Progress Bar**: The modal seamlessly transitions into an active download monitor with live glowing progress bars, transfer speeds (MB/s), downloaded size, ETA, and Pause/Resume controls.
+* **Floating Dock Pill**: Minimizing the dialog parks a sleek floating widget in the bottom-right corner of the webpage showing live speed and percentage.
+

@@ -25,7 +25,7 @@ class ApiServer extends EventEmitter {
     this.app.get('/status', (req, res) => {
       res.json({
         status: 'online',
-        name: 'Internet Download Manager Engine',
+        name: 'Electron by Haris Engine',
         version: '6.42 Build 18',
         activeDownloads: downloadManager.getAllTasks().filter(t => t.status === 'downloading').length,
         totalDownloads: downloadManager.tasks.size,
@@ -139,6 +139,21 @@ class ApiServer extends EventEmitter {
     // List all downloads
     this.app.get('/downloads', (req, res) => {
       res.json(downloadManager.getAllTasks());
+    });
+
+    // Get single download task details
+    this.app.get('/downloads/:id', (req, res) => {
+      const task = downloadManager.getTask(req.params.id);
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      res.json(task.getMeta());
+    });
+
+    // Show desktop progress dialog for a task
+    this.app.post('/downloads/:id/show', (req, res) => {
+      this.emit('show-task-dialog', req.params.id);
+      res.json({ success: true });
     });
 
     // Pause download

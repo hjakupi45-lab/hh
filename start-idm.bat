@@ -1,5 +1,5 @@
 @echo off
-title Internet Download Manager
+title Electron by Haris
 cd /d "%~dp0"
-echo Starting Internet Download Manager...
+echo Starting Electron by Haris...
 npm start

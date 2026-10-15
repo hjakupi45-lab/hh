@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (res.ok) {
         const data = await res.json();
         indicator.className = 'status-indicator online';
-        title.textContent = 'Connected to IDM Engine';
+        title.textContent = 'Connected to Electron by Haris';
         title.style.color = '#15803d';
         desc.textContent = `${data.activeDownloads || 0} active transfers (${data.version || 'v6.42'})`;
         return;
@@ -40,9 +40,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {}
 
     indicator.className = 'status-indicator offline';
-    title.textContent = 'IDM Application Offline';
+    title.textContent = 'Electron by Haris Offline';
     title.style.color = '#b91c1c';
-    desc.textContent = 'Launch IDM Desktop application';
+    desc.textContent = 'Launch Electron by Haris Desktop';
   }
 
   checkConnection();
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }).then(() => {
               window.close();
             }).catch(() => {
-              alert('Could not connect to IDM Desktop application. Is it running?');
+              alert('Could not connect to Electron by Haris. Is it running?');
             });
           } else {
             alert('No downloadable links found on this page.');
@@ -90,13 +90,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Action: Open IDM Desktop
+  // Action: Open Electron by Haris Desktop
   document.getElementById('btn-open-desktop').addEventListener('click', async () => {
     try {
       await fetch('http://127.0.0.1:9462/focus', { method: 'POST' });
       window.close();
     } catch (e) {
-      alert('IDM Desktop is not running. Please start it using "start-idm.bat"!');
+      alert('Electron by Haris Desktop is not running. Please start it using "start-idm.bat"!');
     }
   });
 });

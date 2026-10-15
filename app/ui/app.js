@@ -457,7 +457,7 @@ function setupEventListeners() {
     window.idmApi.openOptionsDialog();
   });
   document.getElementById('menu-help').addEventListener('click', () => {
-    alert('Internet Download Manager 6.42 Reverse Clone\nBuilt for ultra-fast multi-segmented downloads and 100% Chrome integration.');
+    alert('Electron by Haris 6.42\nBuilt for ultra-fast multi-segmented downloads and 100% Chrome integration.');
   });
 
   // IPC Event Subscriptions

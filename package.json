@@ -1,7 +1,8 @@
 {
-  "name": "idm-reverse",
+  "name": "electron-by-haris",
+  "productName": "Electron by Haris",
   "version": "1.0.0",
-  "description": "",
+  "description": "Electron by Haris - High Performance Download Manager",
   "main": "app/main.js",
   "scripts": {
     "start": "electron app/main.js",

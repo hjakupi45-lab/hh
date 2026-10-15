@@ -30,13 +30,13 @@ function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'idm-download-link',
-      title: 'Download with IDM',
+      title: 'Download with Electron by Haris',
       contexts: ['link', 'image', 'video', 'audio', 'selection']
     });
 
     chrome.contextMenus.create({
       id: 'idm-download-all',
-      title: 'Download all links with IDM',
+      title: 'Download all links with Electron by Haris',
       contexts: ['page']
     });
   });
@@ -156,7 +156,7 @@ async function getCookiesForUrl(url) {
 }
 
 // Send single download to IDM Engine
-async function sendToIdm({ url, fileName, referer = '', pageTitle = '', isYouTube = false, format = '1080' }) {
+async function sendToIdm({ url, fileName, referer = '', pageTitle = '', isYouTube = false, format = '1080', autoStart = true }) {
   const cookies = await getCookiesForUrl(url);
 
   try {
@@ -172,20 +172,20 @@ async function sendToIdm({ url, fileName, referer = '', pageTitle = '', isYouTub
         pageTitle,
         isYouTube,
         format,
-        autoStart: true,
+        autoStart,
         showDialog: true
       })
     });
 
     if (response.ok) {
-      showNotification('IDM Download Started', fileName || url);
-      return true;
+      const data = await response.json();
+      showNotification('Electron by Haris', fileName || url);
+      return data;
     }
   } catch (err) {
-    console.warn('[IDM Extension] Cannot reach IDM desktop application:', err);
-    // Fallback: If IDM desktop isn't running, show notice
-    showNotification('IDM Desktop Offline', 'Please launch Internet Download Manager to capture downloads.');
-    return false;
+    console.warn('[Electron by Haris Extension] Cannot reach desktop application:', err);
+    showNotification('Electron by Haris Offline', 'Please launch Electron by Haris to capture downloads.');
+    return null;
   }
 }
 
@@ -202,15 +202,15 @@ async function sendBatchToIdm(items, referer) {
     });
 
     if (response.ok) {
-      showNotification('IDM Batch Grabber', `Captured ${items.length} links into IDM.`);
+      showNotification('Electron by Haris Batch', `Captured ${items.length} links into Electron by Haris.`);
     }
   } catch (err) {
-    showNotification('IDM Desktop Offline', 'Please start IDM to process batch downloads.');
+    showNotification('Electron by Haris Offline', 'Please start desktop application.');
   }
 }
 
 function showNotification(title, message) {
-  // Can use badges or console
+  // Set badge
   chrome.action.setBadgeText({ text: '!' });
   chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
   setTimeout(() => chrome.action.setBadgeText({ text: '' }), 4000);
@@ -226,8 +226,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       referer: tabUrl,
       pageTitle: sender.tab ? sender.tab.title : '',
       isYouTube: message.isYouTube,
-      format: message.format
-    }).then(res => sendResponse({ success: res }));
+      format: message.format,
+      autoStart: message.autoStart !== undefined ? message.autoStart : true
+    }).then(res => {
+      sendResponse({
+        success: !!res,
+        taskId: res ? res.taskId : null,
+        meta: res ? res.meta : null
+      });
+    });
     return true; // async response
   }
 
@@ -244,6 +251,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  if (message.type === 'FOCUS_APP') {
+    fetch(`http://127.0.0.1:${idmServerPort}/focus`, { method: 'POST' })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
+  if (message.type === 'SHOW_TASK_DIALOG') {
+    fetch(`http://127.0.0.1:${idmServerPort}/downloads/${message.taskId}/show`, { method: 'POST' })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
 });
 
 // Periodic ping
@@ -252,11 +273,11 @@ setInterval(() => {
     .then(r => {
       isConnected = r.ok;
       chrome.action.setTitle({
-        title: isConnected ? 'IDM: Connected (Running)' : 'IDM: Disconnected (Not running)'
+        title: isConnected ? 'Electron by Haris: Connected (Running)' : 'Electron by Haris: Disconnected'
       });
     })
     .catch(() => {
       isConnected = false;
-      chrome.action.setTitle({ title: 'IDM: Disconnected (Launch app)' });
+      chrome.action.setTitle({ title: 'Electron by Haris: Disconnected (Launch app)' });
     });
 }, 5000);

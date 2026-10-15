@@ -18,7 +18,7 @@ function createMainWindow() {
     height: 680,
     minWidth: 840,
     minHeight: 500,
-    title: 'Internet Download Manager 6.42',
+    title: 'Electron by Haris',
     icon: path.join(__dirname, 'ui/assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -53,7 +53,7 @@ function openAddUrlDialog() {
     resizable: false,
     parent: mainWindow,
     modal: true,
-    title: 'Enter new address to download',
+    title: 'Enter new address - Electron by Haris',
     icon: path.join(__dirname, 'ui/assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -73,7 +73,7 @@ function openOptionsDialog() {
     resizable: false,
     parent: mainWindow,
     modal: true,
-    title: 'Configuration',
+    title: 'Configuration - Electron by Haris',
     icon: path.join(__dirname, 'ui/assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -86,15 +86,25 @@ function openOptionsDialog() {
   optWin.loadFile(path.join(__dirname, 'ui/options-dialog.html'));
 }
 
+function bringWindowToForeground(win) {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.setAlwaysOnTop(true);
+  win.show();
+  win.focus();
+  win.moveTop();
+  setTimeout(() => {
+    if (!win.isDestroyed()) {
+      win.setAlwaysOnTop(false);
+    }
+  }, 1200);
+}
+
 function openDownloadProgressDialog(taskId) {
   if (progressWindows.has(taskId)) {
     const existing = progressWindows.get(taskId);
     if (!existing.isDestroyed()) {
-      if (existing.isMinimized()) existing.restore();
-      existing.show();
-      existing.focus();
-      existing.setAlwaysOnTop(true, 'screen-saver');
-      existing.moveTop();
+      bringWindowToForeground(existing);
       return existing;
     }
   }
@@ -108,7 +118,7 @@ function openDownloadProgressDialog(taskId) {
     minHeight: 380,
     alwaysOnTop: true,
     show: false,
-    title: task ? `${task.fileName} - IDM` : 'Download Status - IDM',
+    title: task ? `${task.fileName} - Electron by Haris` : 'Download Status - Electron by Haris',
     icon: path.join(__dirname, 'ui/assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -122,20 +132,14 @@ function openDownloadProgressDialog(taskId) {
   progWin.loadURL(htmlUrl);
 
   progWin.once('ready-to-show', () => {
-    progWin.show();
-    progWin.focus();
-    progWin.setAlwaysOnTop(true, 'screen-saver');
-    progWin.moveTop();
+    bringWindowToForeground(progWin);
   });
 
   setTimeout(() => {
     if (!progWin.isDestroyed() && !progWin.isVisible()) {
-      progWin.show();
-      progWin.focus();
-      progWin.setAlwaysOnTop(true, 'screen-saver');
-      progWin.moveTop();
+      bringWindowToForeground(progWin);
     }
-  }, 350);
+  }, 300);
 
   progressWindows.set(taskId, progWin);
 
@@ -156,7 +160,7 @@ function openCompleteDialog(taskId) {
     resizable: false,
     alwaysOnTop: true,
     show: false,
-    title: 'Download Complete',
+    title: 'Download Complete - Electron by Haris',
     icon: path.join(__dirname, 'ui/assets/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -170,10 +174,7 @@ function openCompleteDialog(taskId) {
   compWin.loadURL(completeUrl);
 
   compWin.once('ready-to-show', () => {
-    compWin.show();
-    compWin.focus();
-    compWin.setAlwaysOnTop(true, 'screen-saver');
-    compWin.moveTop();
+    bringWindowToForeground(compWin);
   });
 }
 
@@ -334,6 +335,10 @@ downloadManager.on('task-error', (data) => {
 
 // Handle incoming requests from Chrome extension
 apiServer.on('new-download-request', ({ taskId, showDialog }) => {
+  openDownloadProgressDialog(taskId);
+});
+
+apiServer.on('show-task-dialog', (taskId) => {
   openDownloadProgressDialog(taskId);
 });
 

@@ -1,62 +1,71 @@
-/* IDM Floating Video Downloader Widget */
+/* Electron by Haris - In-Page Video Sniffer & Modern Download UI */
 
+/* 1. Floating Video Sniffer Button */
 .idm-video-sniffer-btn {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 14px;
+  right: 16px;
   z-index: 2147483647;
   display: flex;
   align-items: center;
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: #ffffff !important;
-  font-family: "Segoe UI", -apple-system, sans-serif !important;
-  font-size: 11px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  font-size: 11.5px !important;
   font-weight: 600 !important;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #047857;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  opacity: 0.88;
-  transition: all 0.15s ease;
+  opacity: 0.94;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   line-height: 1.2;
 }
 
 .idm-video-sniffer-btn:hover {
   opacity: 1;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5), 0 4px 10px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+}
+
+.idm-btn-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .idm-btn-icon {
-  width: 14px;
-  height: 14px;
-  margin-right: 5px;
+  width: 15px;
+  height: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .idm-btn-arrow {
-  margin-left: 5px;
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
   font-size: 9px;
   display: inline-block;
+  opacity: 0.9;
 }
 
-/* Dropdown Menu */
+/* Sniffer Dropdown */
 .idm-sniffer-dropdown {
   position: absolute;
   top: 100%;
   right: 0;
-  margin-top: 4px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  min-width: 170px;
-  padding: 4px 0;
+  margin-top: 6px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+  padding: 6px;
   z-index: 2147483647;
   display: none;
 }
@@ -66,19 +75,21 @@
 }
 
 .idm-dropdown-item {
-  padding: 6px 12px;
-  font-size: 11px;
-  color: #1e293b;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  border-radius: 4px;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: all 0.15s;
 }
 
 .idm-dropdown-item:hover {
   background: #0284c7;
   color: #ffffff;
+  transform: translateX(2px);
 }
 
 .idm-item-quality {
@@ -87,8 +98,433 @@
 
 .idm-item-type {
   font-size: 10px;
-  opacity: 0.8;
+  color: #94a3b8;
   margin-left: 8px;
+}
+.idm-dropdown-item:hover .idm-item-type {
+  color: #e0f2fe;
+}
+
+/* 2. Modern In-Page Download Dialog Modal */
+#ebh-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#ebh-modal-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#ebh-download-dialog {
+  width: 480px;
+  max-width: 92vw;
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#ebh-modal-backdrop.show #ebh-download-dialog {
+  transform: scale(1) translateY(0);
+}
+
+/* Header */
+.ebh-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-bottom: 1px solid #334155;
+}
+
+.ebh-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ebh-logo-icon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.ebh-brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+}
+
+.ebh-brand-sub {
+  font-size: 10.5px;
+  color: #10b981;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.ebh-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ebh-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+/* Body Views */
+.ebh-view {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ebh-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ebh-field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.ebh-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ebh-input, .ebh-select {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.ebh-input:focus, .ebh-select:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.ebh-url-text {
+  font-size: 11px;
+  color: #64748b;
+  background: #090d16;
+  padding: 8px 10px;
+  border-radius: 6px;
+  word-break: break-all;
+  max-height: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid #1e293b;
+}
+
+/* Quality Pills */
+.ebh-format-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ebh-pill {
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ebh-pill:hover {
+  background: #334155;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.ebh-pill.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+}
+
+/* Action Buttons */
+.ebh-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #1e293b;
+}
+
+.ebh-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.ebh-btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+}
+
+.ebh-btn-secondary:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.ebh-btn-outline {
+  background: transparent;
+  color: #38bdf8;
+  border: 1px solid #0284c7;
+}
+
+.ebh-btn-outline:hover {
+  background: rgba(2, 132, 199, 0.15);
+  color: #7dd3fc;
+}
+
+.ebh-btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
+}
+
+.ebh-btn-primary:hover {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+}
+
+/* Progress View */
+.ebh-progress-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ebh-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ebh-prog-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ebh-prog-num {
+  font-size: 15px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.ebh-progress-track {
+  width: 100%;
+  height: 12px;
+  background: #0f172a;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #334155;
+}
+
+.ebh-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  border-radius: 6px;
+  transition: width 0.2s ease;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.ebh-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ebh-stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ebh-stat-label {
+  font-size: 10.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.ebh-stat-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.ebh-status-active {
+  color: #38bdf8;
+}
+
+/* Complete View */
+.ebh-complete-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px 10px;
+  gap: 10px;
+}
+
+.ebh-check-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 2px solid #10b981;
+  color: #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.ebh-complete-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ebh-complete-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  max-width: 320px;
+  word-break: break-all;
+}
+
+/* 3. Floating Persistent Dock Widget */
+#ebh-dock-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483646;
+  background: #0f172a;
+  border: 1px solid #10b981;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 30px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 12px rgba(16, 185, 129, 0.3);
+  display: none;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+#ebh-dock-pill.show {
+  display: flex;
+}
+
+#ebh-dock-pill:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7), 0 0 18px rgba(16, 185, 129, 0.5);
+  background: #1e293b;
+}
+
+.ebh-dock-icon {
+  font-size: 14px;
+  color: #10b981;
+}
+
+.ebh-dock-expand {
+  font-size: 10px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
 }
 
 /* In-Page Notification Toast */
