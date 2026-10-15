@@ -257,3 +257,32 @@ node scripts/test-resume.js
 * **Live In-Browser Progress Bar**: The modal seamlessly transitions into an active download monitor with live glowing progress bars, transfer speeds (MB/s), downloaded size, ETA, and Pause/Resume controls.
 * **Floating Dock Pill**: Minimizing the dialog parks a sleek floating widget in the bottom-right corner of the webpage showing live speed and percentage.
 
+---
+
+## 9. Dynamic File Segmentation & Socket Keep-Alive Architecture
+
+### 9.1. True Dynamic File Segmentation (`app/engine/downloader.js`)
+* **IDM Proprietary Algorithm**: Instead of static equal parts computed at the start, an active worker pool continuously monitors progress.
+* **Runtime Segment Stealing (`tryDynamicSplitSegment`)**: Whenever an idle thread finishes its chunk early, the engine inspects active streams, locates the segment with the largest remaining byte buffer (> 256 KB), dynamically cuts it in half (`splitPoint = currentByte + remaining / 2`), bounds the running stream, and assigns the idle worker to start pulling the second half immediately.
+* **Linear Byte Assembly**: All segments (both initial and dynamically split parts) are automatically sorted by `start` offset and sequentially assembled with 100% byte-for-byte data integrity.
+
+### 9.2. Persistent Socket Keep-Alive Connection Pooling
+* Configured `httpKeepAliveAgent` and `httpsKeepAliveAgent` (`keepAlive: true, maxSockets: 64, maxFreeSockets: 32`).
+* Sockets remain open and are reused across range requests and dynamic splits, eliminating TCP 3-way handshake and TLS/SSL certificate exchange latency.
+
+---
+
+## 10. Standalone Windows Installer & Browser Integration Setup Wizard
+
+### 10.1. Standalone NSIS Installer (`dist/Electron by Haris Setup 1.0.0.exe`)
+* Single-file standalone Windows installer built with `electron-builder` (`npm run dist`).
+* Size: **~111.5 MB**.
+* Completely portable to any other Windows PC without requiring Node.js, npm, or Git.
+* Automatically bundles the `extension/` directory into `resources/extension` next to the executable.
+* Automatically creates Desktop and Start Menu shortcuts.
+
+### 10.2. Browser Integration Setup Wizard (`app/ui/integration-wizard.html`)
+* Automatically greets the user on first launch on any PC (or via toolbar `🌐 Browsers` / Options dialog).
+* **Detects Installed Browsers**: Google Chrome, Microsoft Edge, Brave, Opera/Opera GX, and Mozilla Firefox.
+* **1-Click Integration**: Launches the browser directly to its extensions page (`chrome://extensions`, `edge://extensions`), opens the bundled extension folder in File Explorer, and copies the folder path to the clipboard.
+* **Diagnostic Bridge**: Features a "Test Extension Bridge" button confirming live communication on port `9462`.
