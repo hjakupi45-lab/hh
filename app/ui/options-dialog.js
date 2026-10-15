@@ -18,8 +18,16 @@ async function init() {
   document.getElementById('chk-show-progress').checked = !!settings.showDownloadProgressDialog;
   document.getElementById('chk-show-complete').checked = !!settings.showDownloadCompleteDialog;
   document.getElementById('chk-sounds').checked = !!settings.soundsEnabled;
-  document.getElementById('select-max-segments').value = String(settings.maxSegments || 8);
+  document.getElementById('select-theme').value = settings.theme || 'light';
+  document.getElementById('select-max-segments').value = String(settings.maxSegments || 16);
   document.getElementById('input-speed-limit').value = settings.speedLimitKBps || 0;
+
+  // Live theme change preview
+  document.getElementById('select-theme').addEventListener('change', (e) => {
+    if (window.applyTheme) {
+      window.applyTheme(e.target.value);
+    }
+  });
 
   // Directories
   document.getElementById('dir-general').value = settings.defaultDownloadDir || '';
@@ -54,6 +62,7 @@ async function init() {
       showDownloadProgressDialog: document.getElementById('chk-show-progress').checked,
       showDownloadCompleteDialog: document.getElementById('chk-show-complete').checked,
       soundsEnabled: document.getElementById('chk-sounds').checked,
+      theme: document.getElementById('select-theme').value,
       maxSegments: parseInt(document.getElementById('select-max-segments').value, 10),
       speedLimitKBps: parseInt(document.getElementById('input-speed-limit').value, 10) || 0,
       defaultDownloadDir: document.getElementById('dir-general').value,

@@ -38,8 +38,96 @@
     });
   }
 
+  function resolveSocialMediaTarget(video) {
+    const host = window.location.hostname.toLowerCase();
+
+    // 1. YouTube & YouTube Shorts
+    if (host.includes('youtube.com') || host.includes('youtu.be')) {
+      const shortsContainer = video.closest('ytd-reel-video-renderer') || video.closest('ytd-shorts');
+      if (shortsContainer) {
+        const link = shortsContainer.querySelector('a[href*="/shorts/"]');
+        if (link && link.href) {
+          return { url: link.href, title: (document.title || 'YouTube_Shorts').replace('- YouTube', '').trim(), isSocial: true, platform: 'YouTube Shorts' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'YouTube_Video').replace('- YouTube', '').trim(), isSocial: true, platform: 'YouTube' };
+    }
+
+    // 2. Facebook (Reels, Watch, Feed)
+    if (host.includes('facebook.com') || host.includes('fb.watch') || host.includes('fb.com')) {
+      const feedUnit = video.closest('[role="feed"] > div') || 
+                       video.closest('[data-pagelet*="FeedUnit"]') || 
+                       video.closest('div[data-video-id]') || 
+                       video.closest('div[role="article"]') ||
+                       video.closest('div[data-pagelet*="Reel"]') ||
+                       video.closest('div[data-pagelet*="Watch"]');
+      if (feedUnit) {
+        const link = feedUnit.querySelector('a[href*="/videos/"]') || 
+                     feedUnit.querySelector('a[href*="/reel/"]') || 
+                     feedUnit.querySelector('a[href*="/watch"]') ||
+                     feedUnit.querySelector('a[href*="facebook.com"]');
+        if (link && link.href) {
+          return { url: link.href, title: 'Facebook_Video_' + Date.now(), isSocial: true, platform: 'Facebook' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'Facebook_Video').replace('| Facebook', '').trim(), isSocial: true, platform: 'Facebook' };
+    }
+
+    // 3. Instagram (Reels & Posts)
+    if (host.includes('instagram.com')) {
+      const article = video.closest('article') || video.closest('div[role="dialog"]') || video.closest('div[data-blade]');
+      if (article) {
+        const link = article.querySelector('a[href*="/reel/"]') || article.querySelector('a[href*="/p/"]');
+        if (link && link.href) {
+          return { url: link.href, title: 'Instagram_Video_' + Date.now(), isSocial: true, platform: 'Instagram' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'Instagram_Video').replace('- Instagram', '').trim(), isSocial: true, platform: 'Instagram' };
+    }
+
+    // 4. TikTok
+    if (host.includes('tiktok.com')) {
+      const container = video.closest('[data-e2e="feed-video"]') || video.closest('[data-e2e="player"]');
+      if (container) {
+        const link = container.querySelector('a[href*="/video/"]');
+        if (link && link.href) {
+          return { url: link.href, title: 'TikTok_Video_' + Date.now(), isSocial: true, platform: 'TikTok' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'TikTok_Video').replace('| TikTok', '').trim(), isSocial: true, platform: 'TikTok' };
+    }
+
+    // 5. Twitter / X
+    if (host.includes('twitter.com') || host.includes('x.com')) {
+      const tweet = video.closest('article[data-testid="tweet"]') || video.closest('div[data-testid="videoComponent"]');
+      if (tweet) {
+        const link = tweet.querySelector('a[href*="/status/"]');
+        if (link && link.href) {
+          return { url: link.href, title: 'Twitter_Video_' + Date.now(), isSocial: true, platform: 'Twitter/X' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'Twitter_Video').replace('/ X', '').replace('- Twitter', '').trim(), isSocial: true, platform: 'Twitter/X' };
+    }
+
+    // 6. Reddit
+    if (host.includes('reddit.com')) {
+      const post = video.closest('shredder-post') || video.closest('[data-testid="post-container"]') || video.closest('article');
+      if (post) {
+        const link = post.querySelector('a[data-testid="post-title"]') || post.querySelector('a[href*="/comments/"]');
+        if (link && link.href) {
+          return { url: link.href, title: 'Reddit_Video_' + Date.now(), isSocial: true, platform: 'Reddit' };
+        }
+      }
+      return { url: window.location.href, title: (document.title || 'Reddit_Video').replace('- Reddit', '').trim(), isSocial: true, platform: 'Reddit' };
+    }
+
+    // Generic HTML5 video
+    const src = video.currentSrc || video.src;
+    return { url: src || window.location.href, title: (document.title || 'video').trim(), isSocial: false, platform: 'HTML5' };
+  }
+
   function scanForPlayers() {
-    // 1. YouTube Player
+    // 1. YouTube Main Player
     if (window.location.hostname.includes('youtube.com')) {
       const ytPlayer = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
       if (ytPlayer && !ytPlayer.querySelector('.idm-yt-sniffer-btn')) {
@@ -47,9 +135,9 @@
       }
     }
 
-    // 2. Generic HTML5 Videos
+    // 2. All HTML5 Videos (Facebook, Instagram, TikTok, Twitter/X, Reddit, Shorts, etc.)
     const videos = document.querySelectorAll('video');
-    videos.forEach(attachGenericSniffer);
+    videos.forEach(attachUniversalSniffer);
   }
 
   function attachYouTubeSniffer(player) {
@@ -99,7 +187,6 @@
     const mainAction = btn.querySelector('.idm-btn-main');
     const arrowAction = btn.querySelector('.idm-btn-arrow');
 
-    // Click main part -> open in-page download modal with 1080p pre-selected
     mainAction.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -109,12 +196,12 @@
         url: window.location.href,
         fileName: `${pageTitle}_(1080p).mp4`,
         isYouTube: true,
+        isSocial: true,
         format: '1080',
         category: 'video'
       });
     });
 
-    // Click arrow -> toggle dropdown
     arrowAction.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -134,6 +221,7 @@
           url: window.location.href,
           fileName: `${pageTitle}_(${label}).${ext}`,
           isYouTube: true,
+          isSocial: true,
           format: format,
           category: format === 'audio' ? 'music' : 'video'
         });
@@ -147,112 +235,123 @@
     player.appendChild(btn);
   }
 
-  function attachGenericSniffer(video) {
-    if (window.location.hostname.includes('youtube.com')) return;
+  function attachUniversalSniffer(video) {
+    if (window.location.hostname.includes('youtube.com') && !video.closest('ytd-reel-video-renderer')) return;
     if (processedContainers.has(video)) return;
     processedContainers.add(video);
 
-    const parent = video.parentElement;
-    if (!parent || parent.querySelector('.idm-video-sniffer-btn')) return;
+    // Find best relative host container
+    let container = video.parentElement;
+    if (!container) return;
 
-    const style = window.getComputedStyle(parent);
+    // Skip tiny icons/previews
+    const rect = video.getBoundingClientRect();
+    if (rect.width > 0 && rect.width < 120 && rect.height > 0 && rect.height < 120) return;
+
+    // Check if button already exists in container or video parent
+    if (container.querySelector('.idm-video-sniffer-btn')) return;
+
+    const style = window.getComputedStyle(container);
     if (style.position === 'static') {
-      parent.style.position = 'relative';
+      container.style.position = 'relative';
     }
+
+    const info = resolveSocialMediaTarget(video);
 
     const btn = document.createElement('div');
     btn.className = 'idm-video-sniffer-btn';
+    btn.style.position = 'absolute';
+    btn.style.top = '10px';
+    btn.style.right = '10px';
+    btn.style.zIndex = '2147483647';
+
     btn.innerHTML = `
-      <div class="idm-btn-icon">
-        <svg viewBox="0 0 16 16" width="13" height="13" fill="#ffffff">
-          <circle cx="8" cy="8" r="7" fill="#047857"/>
-          <path d="M8 4v5M5 7l3 3 3-3M4 12h8" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-        </svg>
+      <div class="idm-btn-main" style="display: flex; align-items: center;">
+        <div class="idm-btn-icon">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="#ffffff">
+            <circle cx="8" cy="8" r="7" fill="#047857"/>
+            <path d="M8 4v5M5 7l3 3 3-3M4 12h8" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+          </svg>
+        </div>
+        <span class="idm-btn-label">Download with Electron by Haris</span>
       </div>
-      <span>Download with Electron by Haris</span>
-      <span class="idm-btn-arrow">▼</span>
-      <div class="idm-sniffer-dropdown"></div>
+      <span class="idm-btn-arrow" style="padding: 2px 4px; margin-left: 4px; border-left: 1px solid rgba(255,255,255,0.3);">▼</span>
+      <div class="idm-sniffer-dropdown">
+        <div class="idm-dropdown-item" data-format="1080">
+          <span class="idm-item-quality">1080p Full HD</span>
+          <span class="idm-item-type">MP4 (with Audio)</span>
+        </div>
+        <div class="idm-dropdown-item" data-format="720">
+          <span class="idm-item-quality">720p HD</span>
+          <span class="idm-item-type">MP4 (with Audio)</span>
+        </div>
+        <div class="idm-dropdown-item" data-format="480">
+          <span class="idm-item-quality">480p SD</span>
+          <span class="idm-item-type">MP4 (with Audio)</span>
+        </div>
+        <div class="idm-dropdown-item" data-format="360">
+          <span class="idm-item-quality">360p Standard</span>
+          <span class="idm-item-type">MP4 (with Audio)</span>
+        </div>
+        <div class="idm-dropdown-item" data-format="audio">
+          <span class="idm-item-quality">Audio Only</span>
+          <span class="idm-item-type">MP3</span>
+        </div>
+      </div>
     `;
 
     const dropdown = btn.querySelector('.idm-sniffer-dropdown');
+    const mainAction = btn.querySelector('.idm-btn-main');
+    const arrowAction = btn.querySelector('.idm-btn-arrow');
 
-    btn.addEventListener('click', (e) => {
+    mainAction.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
+      dropdown.classList.remove('show');
+      const target = resolveSocialMediaTarget(video);
+      let cleanTitle = (target.title || document.title || 'video').replace(/[\\/:*?"<>|]/g, '').trim();
+      openInBrowserDownloadDialog({
+        url: target.url,
+        fileName: `${cleanTitle}_(1080p).mp4`,
+        isYouTube: target.isSocial,
+        isSocial: target.isSocial,
+        format: '1080',
+        category: 'video'
+      });
+    });
 
-      const sources = gatherVideoSources(video);
-      const mainSrc = video.currentSrc || video.src;
+    arrowAction.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dropdown.classList.toggle('show');
+    });
 
-      if (sources.length <= 1) {
-        const targetUrl = (sources[0] && sources[0].url) || mainSrc || window.location.href;
-        downloadSource(targetUrl, 'video');
-        return;
-      }
+    dropdown.querySelectorAll('.idm-dropdown-item').forEach(item => {
+      item.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const format = item.getAttribute('data-format');
+        dropdown.classList.remove('show');
 
-      dropdown.innerHTML = sources.map((s, idx) => `
-        <div class="idm-dropdown-item" data-idx="${idx}">
-          <span class="idm-item-quality">${s.quality}</span>
-          <span class="idm-item-type">${s.type}</span>
-        </div>
-      `).join('');
-
-      dropdown.querySelectorAll('.idm-dropdown-item').forEach(item => {
-        item.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          const idx = parseInt(item.getAttribute('data-idx'), 10);
-          const chosen = sources[idx];
-          if (chosen) {
-            downloadSource(chosen.url, chosen.quality);
-            dropdown.classList.remove('show');
-          }
+        const target = resolveSocialMediaTarget(video);
+        let cleanTitle = (target.title || document.title || 'video').replace(/[\\/:*?"<>|]/g, '').trim();
+        const ext = format === 'audio' ? 'mp3' : 'mp4';
+        const label = format === 'audio' ? 'Audio' : `${format}p`;
+        openInBrowserDownloadDialog({
+          url: target.url,
+          fileName: `${cleanTitle}_(${label}).${ext}`,
+          isYouTube: target.isSocial,
+          isSocial: target.isSocial,
+          format: format,
+          category: format === 'audio' ? 'music' : 'video'
         });
       });
-
-      dropdown.classList.toggle('show');
     });
 
     document.addEventListener('click', () => {
       dropdown.classList.remove('show');
     });
 
-    parent.appendChild(btn);
-  }
-
-  function gatherVideoSources(video) {
-    const list = [];
-    const mainSrc = video.currentSrc || video.src;
-
-    if (mainSrc && (mainSrc.startsWith('http://') || mainSrc.startsWith('https://'))) {
-      list.push({
-        url: mainSrc,
-        quality: video.videoHeight ? `${video.videoHeight}p` : 'Default Quality',
-        type: 'MP4 / WebM'
-      });
-    }
-
-    const sourceTags = video.querySelectorAll('source');
-    sourceTags.forEach(st => {
-      const src = st.src;
-      if (src && (src.startsWith('http://') || src.startsWith('https://')) && !list.some(s => s.url === src)) {
-        list.push({
-          url: src,
-          quality: st.getAttribute('size') ? `${st.getAttribute('size')}p` : 'Alternate Quality',
-          type: st.type || 'Media'
-        });
-      }
-    });
-
-    return list;
-  }
-
-  function downloadSource(url, qualityLabel) {
-    let cleanTitle = document.title || 'video';
-    cleanTitle = cleanTitle.replace(/[\\/:*?"<>|]/g, '').trim();
-    openInBrowserDownloadDialog({
-      url,
-      fileName: `${cleanTitle}.mp4`,
-      category: 'video'
-    });
+    container.appendChild(btn);
   }
 
   // Intercept file download links (test pages, direct download buttons)
@@ -599,7 +698,7 @@
     const cap = catSelect.value.charAt(0).toUpperCase() + catSelect.value.slice(1);
     folderInput.value = `Downloads\\${cap}`;
 
-    if (payload.isYouTube) {
+    if (payload.isYouTube || payload.isSocial) {
       formatGroup.style.display = 'flex';
       payload.baseTitle = payload.fileName.replace(/_\(.*?p\)\.mp4|_\(Audio\)\.mp3/i, '').trim();
       
@@ -640,9 +739,9 @@
       url: payload.url,
       fileName: payload.fileName,
       referer: window.location.href,
-      isYouTube: payload.isYouTube || false,
+      isYouTube: payload.isYouTube || payload.isSocial || false,
       format: payload.format || '1080',
-      category: payload.category || 'general',
+      category: payload.category || 'video',
       autoStart: true,
       showDialog: true
     };

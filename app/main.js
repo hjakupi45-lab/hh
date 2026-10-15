@@ -331,7 +331,13 @@ ipcMain.handle('get-settings', () => {
 });
 
 ipcMain.handle('save-settings', (event, newSettings) => {
-  return storage.saveSettings(newSettings);
+  const saved = storage.saveSettings(newSettings);
+  BrowserWindow.getAllWindows().forEach(win => {
+    if (!win.isDestroyed()) {
+      win.webContents.send('settings-updated', saved);
+    }
+  });
+  return saved;
 });
 
 ipcMain.handle('add-new-download', (event, options) => {

@@ -48,7 +48,8 @@ contextBridge.exposeInMainWorld('idmApi', {
       'task-completed',
       'task-deleted',
       'task-error',
-      'active-task-data'
+      'active-task-data',
+      'settings-updated'
     ];
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => listener(...args);

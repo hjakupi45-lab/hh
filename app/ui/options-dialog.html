@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Configuration - Electron by Haris</title>
+  <link rel="stylesheet" href="assets/theme.css">
+  <script src="assets/theme.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
     body {
@@ -137,6 +139,17 @@
       <input type="checkbox" id="chk-sounds">
       <span>Play authentic IDM sound chimes (complete / alert)</span>
     </label>
+
+    <div class="form-row" style="margin-top: 8px;">
+      <span class="form-label">Color Theme:</span>
+      <select id="select-theme" class="form-input" style="width: 170px;">
+        <option value="light">☀️ Classic Light (IDM)</option>
+        <option value="dark">🌙 Modern Dark (Sleek)</option>
+        <option value="system">💻 System Default</option>
+      </select>
+      <span style="color: #666; font-size: 11px;">(Live dark & light theme switch)</span>
+    </div>
+
     <div class="form-row" style="margin-top: 8px;">
       <span class="form-label">Integration Port:</span>
       <input type="number" id="input-port" class="form-input" style="width: 80px;" value="9462" readonly>

@@ -9,16 +9,16 @@ const storage = require('./storage');
 // Persistent Keep-Alive socket pools to eliminate TCP/TLS handshake overhead
 const httpKeepAliveAgent = new http.Agent({
   keepAlive: true,
-  maxSockets: 64,
-  maxFreeSockets: 32,
-  keepAliveMsecs: 60000
+  maxSockets: 128,
+  maxFreeSockets: 64,
+  keepAliveMsecs: 120000
 });
 
 const httpsKeepAliveAgent = new https.Agent({
   keepAlive: true,
-  maxSockets: 64,
-  maxFreeSockets: 32,
-  keepAliveMsecs: 60000
+  maxSockets: 128,
+  maxFreeSockets: 64,
+  keepAliveMsecs: 120000
 });
 
 class DownloadTask extends EventEmitter {
@@ -211,6 +211,46 @@ class DownloadTask extends EventEmitter {
     });
   }
 
+  isSocialMediaUrl(urlString) {
+    if (this.isYouTube || this.isSocialMedia) return true;
+    try {
+      const parsed = new URL(urlString);
+      const host = parsed.hostname.toLowerCase();
+      const socialDomains = [
+        'youtube.com', 'youtu.be',
+        'facebook.com', 'fb.watch', 'fb.com', 'm.facebook.com', 'web.facebook.com',
+        'instagram.com', 'instagr.am',
+        'tiktok.com',
+        'twitter.com', 'x.com',
+        'reddit.com', 'v.redd.it', 'redd.it',
+        'vimeo.com',
+        'twitch.tv',
+        'pinterest.com', 'pin.it',
+        'dailymotion.com', 'dai.ly',
+        'soundcloud.com',
+        'bilibili.com', 'bilibili.tv',
+        'vk.com',
+        'threads.net', 'threads.com',
+        'snapchat.com',
+        'rumble.com',
+        'linkedin.com',
+        'tumblr.com',
+        'streamable.com',
+        'mixcloud.com',
+        'bandcamp.com',
+        'odysee.com',
+        'bitchute.com',
+        'kick.com',
+        'weibo.com',
+        'douyin.com',
+        'kuaishou.com'
+      ];
+      return socialDomains.some(d => host === d || host.endsWith('.' + d));
+    } catch {
+      return false;
+    }
+  }
+
   async start() {
     if (this.status === 'downloading') return;
     this.isPaused = false;
@@ -220,8 +260,8 @@ class DownloadTask extends EventEmitter {
     this.emit('status-change', this.getMeta());
 
     try {
-      if (this.isYouTube || this.url.includes('youtube.com') || this.url.includes('youtu.be')) {
-        return await this.startYouTubeDownload();
+      if (this.isSocialMediaUrl(this.url)) {
+        return await this.startMediaStreamDownload();
       }
 
       if (this.totalBytes === 0) {
@@ -400,6 +440,10 @@ class DownloadTask extends EventEmitter {
   }
 
   async startYouTubeDownload() {
+    return this.startMediaStreamDownload();
+  }
+
+  async startMediaStreamDownload() {
     const { spawn } = require('child_process');
     this.status = 'downloading';
     this.category = 'video';
@@ -408,12 +452,31 @@ class DownloadTask extends EventEmitter {
 
     const { command, baseArgs } = this.getYtDlpExecution();
     const ffmpegBin = this.findFFmpegBin();
-    const outTemplate = path.join(this.directory, '%(title)s.%(ext)s');
+    const outTemplate = path.join(this.directory, '%(title).100s.%(ext)s');
+
+    const maxParallel = Math.max(8, Math.min(32, storage.settings.maxSegments || 16));
+    const turboArgs = [
+      '-N', String(maxParallel),   // IDM multi-connection parallel chunk downloading!
+      '--buffer-size', '1024k',    // 1MB network buffer
+      '--http-chunk-size', '10M',  // 10MB chunks for fast throughput
+      '--retries', '10',
+      '--fragment-retries', '10'
+    ];
+
+    let cookieArgs = [];
+    if (this.cookies && this.cookies.trim()) {
+      cookieArgs = ['--add-header', `Cookie:${this.cookies}`];
+    }
+    if (this.referer) {
+      cookieArgs.push('--add-header', `Referer:${this.referer}`);
+    }
 
     let args;
     if (this.format === 'audio') {
       args = [
         ...baseArgs,
+        ...turboArgs,
+        ...cookieArgs,
         ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-x',
         '--audio-format', 'mp3',
@@ -429,6 +492,8 @@ class DownloadTask extends EventEmitter {
 
       args = [
         ...baseArgs,
+        ...turboArgs,
+        ...cookieArgs,
         ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-f', formatArg,
         '--merge-output-format', 'mp4',
@@ -440,7 +505,7 @@ class DownloadTask extends EventEmitter {
       ];
     }
 
-    console.log(`[yt-dlp] Spawning: ${command} ${args.join(' ')}`);
+    console.log(`[yt-dlp Turbo] Spawning: ${command} ${args.join(' ')}`);
 
     return new Promise((resolve, reject) => {
       const proc = spawn(command, args);
@@ -702,7 +767,8 @@ class DownloadTask extends EventEmitter {
       seg.status = 'downloading';
 
       const fileStream = fs.createWriteStream(seg.partFile, {
-        flags: seg.downloaded > 0 ? 'a' : 'w'
+        flags: seg.downloaded > 0 ? 'a' : 'w',
+        highWaterMark: 1024 * 1024 // 1MB high-speed disk buffer
       });
       if (!this.activeStreams) this.activeStreams = [];
       this.activeStreams.push(fileStream);
@@ -870,7 +936,9 @@ class DownloadTask extends EventEmitter {
       fs.mkdirSync(this.directory, { recursive: true });
     }
 
-    const outStream = fs.createWriteStream(this.filePath);
+    const outStream = fs.createWriteStream(this.filePath, {
+      highWaterMark: 1024 * 1024
+    });
 
     // CRITICAL: Sort all dynamically split segments by starting byte offset
     const sortedSegments = [...this.segments].sort((a, b) => a.start - b.start);
@@ -878,7 +946,9 @@ class DownloadTask extends EventEmitter {
     for (const seg of sortedSegments) {
       if (fs.existsSync(seg.partFile)) {
         await new Promise((res, rej) => {
-          const inStream = fs.createReadStream(seg.partFile);
+          const inStream = fs.createReadStream(seg.partFile, {
+            highWaterMark: 1024 * 1024
+          });
           inStream.pipe(outStream, { end: false });
           inStream.on('end', res);
           inStream.on('error', rej);

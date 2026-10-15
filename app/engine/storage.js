@@ -22,7 +22,8 @@ class StorageManager {
         video: path.join(os.homedir(), 'Downloads', 'Video'),
         general: path.join(os.homedir(), 'Downloads')
       },
-      maxSegments: 8,
+      maxSegments: 16,
+      theme: 'light', // 'light', 'dark', 'system'
       speedLimitKBps: 0, // 0 = unlimited
       speedLimiterEnabled: false,
       soundsEnabled: true,
