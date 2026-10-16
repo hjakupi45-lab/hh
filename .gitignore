@@ -20,3 +20,7 @@ build/
 mac-cache/
 bin/*.exe
 test_rick*
+
+# Code signing material (never commit private keys)
+signing/
+*.pfx
