@@ -593,9 +593,13 @@ class DownloadTask extends EventEmitter {
     // yt-dlp needs a JS runtime + EJS components to fully extract YouTube
     // formats; without them extraction is degraded and format selection can
     // fail with "Requested format is not available".
+    // --encoding utf-8 is required so non-ASCII titles (e.g. en dash) are
+    // emitted as UTF-8 instead of the console code page; otherwise the parsed
+    // file path becomes mojibake and Open File/Folder silently fail.
     const extractionArgs = [
       ...this.findJsRuntime(),
-      '--remote-components', 'ejs:github'
+      '--remote-components', 'ejs:github',
+      '--encoding', 'utf-8'
     ];
 
     let cookieArgs = [];

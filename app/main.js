@@ -487,16 +487,33 @@ ipcMain.handle('delete-all-completed', (event, deleteFiles) => {
   return true;
 });
 
-ipcMain.handle('open-file', async (event, filePath) => {
-  if (filePath) {
-    await shell.openPath(filePath);
+async function openContainingFolder(filePath) {
+  const dir = path.dirname(filePath);
+  if (fs.existsSync(dir)) {
+    const err = await shell.openPath(dir);
+    return { ok: !err, error: err || null };
   }
+  return { ok: false, error: `Folder not found: ${dir}` };
+}
+
+ipcMain.handle('open-file', async (event, filePath) => {
+  if (!filePath) return { ok: false, error: 'No file path' };
+  if (fs.existsSync(filePath)) {
+    const err = await shell.openPath(filePath);
+    return { ok: !err, error: err || null };
+  }
+  // File is missing (e.g. moved/renamed) — fall back to its containing folder
+  return openContainingFolder(filePath);
 });
 
 ipcMain.handle('open-folder', async (event, filePath) => {
-  if (filePath) {
+  if (!filePath) return { ok: false, error: 'No file path' };
+  if (fs.existsSync(filePath)) {
     shell.showItemInFolder(filePath);
+    return { ok: true, error: null };
   }
+  // Selection target is missing — just open the folder itself
+  return openContainingFolder(filePath);
 });
 
 ipcMain.handle('select-directory', async () => {
