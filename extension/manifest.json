@@ -3,7 +3,7 @@
   "name": "Electron by Haris - Download Integration",
   "short_name": "Electron by Haris",
   "version": "6.42.18",
-  "description": "Electron by Haris integration module for Google Chrome. Captures downloads and grabs web videos.",
+  "description": "Electron by Haris integration module. Captures browser downloads and grabs web videos (Chrome, Edge, Brave, Opera, Firefox).",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "js": ["polyfill.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }
@@ -36,7 +36,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "cookies"
+    "cookies",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

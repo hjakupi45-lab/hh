@@ -5,11 +5,14 @@ const { spawn } = require('child_process');
 const { pathToFileURL } = require('url');
 const downloadManager = require('./engine/downloader');
 const storage = require('./engine/storage');
+const scheduler = require('./engine/scheduler');
 const apiServer = require('./server/apiServer');
 
 let mainWindow = null;
 let tray = null;
 const progressWindows = new Map(); // taskId -> BrowserWindow
+
+app.isQuitting = false;
 
 // Enforce single instance: if another instance is already running, focus it and quit
 const gotTheLock = app.requestSingleInstanceLock();
@@ -31,10 +34,20 @@ app.on('second-instance', () => {
 // Initialize integration server only in the primary instance
 apiServer.start();
 
-function getExtensionPath() {
+function getExtensionPath(browserId) {
+  const isFirefox = browserId === 'firefox';
+
   if (app.isPackaged) {
-    const packagedExt = path.join(process.resourcesPath, 'extension');
+    // Firefox and Chromium builds are bundled into separate resource folders.
+    const packagedExt = path.join(process.resourcesPath, isFirefox ? 'extension-firefox' : 'extension');
     if (fs.existsSync(packagedExt)) return packagedExt;
+    const fallback = path.join(process.resourcesPath, 'extension');
+    if (fs.existsSync(fallback)) return fallback;
+  }
+
+  if (isFirefox) {
+    const builtFirefox = path.join(__dirname, '../build/extensions/firefox');
+    if (fs.existsSync(builtFirefox)) return builtFirefox;
   }
   return path.join(__dirname, '../extension');
 }
@@ -98,7 +111,7 @@ function detectInstalledBrowsers() {
         path.join(programFiles, 'Mozilla Firefox/firefox.exe'),
         path.join(programFilesX86, 'Mozilla Firefox/firefox.exe')
       ],
-      extensionUrl: 'about:addons'
+      extensionUrl: 'about:debugging#/runtime/this-firefox'
     }
   ];
 
@@ -172,16 +185,51 @@ function createMainWindow() {
   });
 
   mainWindow.on('close', (e) => {
+    // Typical download-manager behaviour: closing the window parks the app in
+    // the system tray so background bridge keeps working. Exit via the tray
+    // menu (or File > Exit) to actually terminate.
     if (!app.isQuitting) {
-      // Keep running in background/tray unless quit
-      // mainWindow.hide();
-      // e.preventDefault();
+      e.preventDefault();
+      mainWindow.hide();
     }
   });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTray() {
+  if (tray) return;
+  try {
+    const iconPath = path.join(__dirname, 'ui/assets/icon.png');
+    const trayImage = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+    tray = new Tray(trayImage);
+    tray.setToolTip('Electron by Haris');
+
+    const contextMenu = Menu.buildFromTemplate([
+      { label: 'Open Electron by Haris', click: () => showMainWindow() },
+      { label: 'Add URL...', click: () => { showMainWindow(); openAddUrlDialog(); } },
+      { label: 'Scheduler...', click: () => { showMainWindow(); openSchedulerDialog(); } },
+      { type: 'separator' },
+      { label: 'Exit', click: () => { app.isQuitting = true; app.quit(); } }
+    ]);
+
+    tray.setContextMenu(contextMenu);
+    tray.on('double-click', () => showMainWindow());
+  } catch (e) {
+    console.error('Tray initialization failed:', e);
+  }
 }
 
 function openAddUrlDialog() {
@@ -222,6 +270,60 @@ function openOptionsDialog() {
 
   optWin.setMenu(null);
   optWin.loadFile(path.join(__dirname, 'ui/options-dialog.html'));
+}
+
+function openSchedulerDialog() {
+  const schWin = new BrowserWindow({
+    width: 460,
+    height: 420,
+    resizable: false,
+    parent: mainWindow,
+    modal: true,
+    title: 'Download Scheduler - Electron by Haris',
+    icon: path.join(__dirname, 'ui/assets/icon.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  schWin.setMenu(null);
+  schWin.loadFile(path.join(__dirname, 'ui/scheduler-dialog.html'));
+}
+
+// Execute the configured stop action (queue stop, app exit, power state...).
+function runSchedulerAction(action) {
+  switch (action) {
+    case 'stop-queue':
+      downloadManager.stopAll();
+      break;
+    case 'exit-app':
+      app.isQuitting = true;
+      app.quit();
+      break;
+    case 'shutdown':
+      if (process.platform === 'win32') {
+        spawn('shutdown', ['/s', '/t', '60', '/c', 'Electron by Haris: scheduled shutdown. Save your work.'], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        spawn('shutdown', ['-h', '+1'], { detached: true, stdio: 'ignore' }).unref();
+      }
+      break;
+    case 'hibernate':
+      if (process.platform === 'win32') {
+        spawn('shutdown', ['/h'], { detached: true, stdio: 'ignore' }).unref();
+      }
+      break;
+    case 'sleep':
+      if (process.platform === 'win32') {
+        spawn('rundll32.exe', ['powrprof.dll,SetSuspendState', '0,1,0'], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        spawn('pmset', ['sleepnow'], { detached: true, stdio: 'ignore' }).unref();
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 function bringWindowToForeground(win) {
@@ -415,6 +517,21 @@ ipcMain.handle('open-options-dialog', () => {
   openOptionsDialog();
 });
 
+ipcMain.handle('get-scheduler', () => {
+  return scheduler.getStatus();
+});
+
+ipcMain.handle('save-scheduler', (event, patch) => {
+  scheduler.saveConfig(patch);
+  const status = scheduler.getStatus();
+  broadcastToWindows('scheduler-updated', status);
+  return status;
+});
+
+ipcMain.handle('open-scheduler-dialog', () => {
+  openSchedulerDialog();
+});
+
 ipcMain.handle('open-download-progress-dialog', (event, id) => {
   openDownloadProgressDialog(id);
 });
@@ -429,17 +546,22 @@ ipcMain.handle('minimize-current-window', (event) => {
   if (win) win.minimize();
 });
 
+ipcMain.handle('quit-app', () => {
+  app.isQuitting = true;
+  app.quit();
+});
+
 // Browser Integration & Setup Wizard IPC Handlers
 ipcMain.handle('detect-browsers', () => {
   return detectInstalledBrowsers();
 });
 
-ipcMain.handle('get-extension-path', () => {
-  return getExtensionPath();
+ipcMain.handle('get-extension-path', (event, browserId) => {
+  return getExtensionPath(browserId);
 });
 
-ipcMain.handle('open-extension-folder', async () => {
-  const extPath = getExtensionPath();
+ipcMain.handle('open-extension-folder', async (event, browserId) => {
+  const extPath = getExtensionPath(browserId);
   if (fs.existsSync(extPath)) {
     await shell.openPath(extPath);
   }
@@ -448,7 +570,7 @@ ipcMain.handle('open-extension-folder', async () => {
 ipcMain.handle('integrate-browser', async (event, browserId) => {
   const browsers = detectInstalledBrowsers();
   const target = browsers.find(b => b.id === browserId);
-  const extPath = getExtensionPath();
+  const extPath = getExtensionPath(browserId);
 
   // 1. Open extension folder in Explorer
   if (fs.existsSync(extPath)) {
@@ -519,6 +641,30 @@ downloadManager.on('task-completed', (meta) => {
   if (storage.settings.showDownloadCompleteDialog) {
     openCompleteDialog(meta.id);
   }
+
+  // "Turn off computer when all downloads finish" scheduler option.
+  const schedCfg = scheduler.getConfig();
+  if (schedCfg.enabled && schedCfg.shutdownOnComplete) {
+    const stillActive = downloadManager.getAllTasks().some(
+      t => t.status === 'downloading' || t.status === 'connecting' || t.status === 'queued' || t.status === 'assembling'
+    );
+    if (!stillActive) {
+      runSchedulerAction('shutdown');
+    }
+  }
+});
+
+// Scheduler event dispatching
+scheduler.on('schedule-start', (info) => {
+  if (info.onStart === 'resume-queue') {
+    downloadManager.resumeAll();
+  }
+  broadcastToWindows('scheduler-fired', { phase: 'start', info });
+});
+
+scheduler.on('schedule-stop', (info) => {
+  runSchedulerAction(info.onStop);
+  broadcastToWindows('scheduler-fired', { phase: 'stop', info });
 });
 
 downloadManager.on('task-deleted', (id) => {
@@ -558,12 +704,19 @@ apiServer.on('focus-window', () => {
 
 app.whenReady().then(() => {
   createMainWindow();
+  createTray();
+  scheduler.start();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
     }
   });
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true;
+  scheduler.stop();
 });
 
 app.on('window-all-closed', () => {

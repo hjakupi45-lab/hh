@@ -21,6 +21,86 @@ const httpsKeepAliveAgent = new https.Agent({
   keepAliveMsecs: 120000
 });
 
+// Global Speed Limiter shared across every active segmented stream.
+//
+// Because independent segments each pause only their own socket, throttling
+// them separately allows an aggregate overshoot. Instead this limiter keeps the
+// set of all live response streams and, once the per-second budget is exceeded,
+// pauses EVERY stream simultaneously and resumes them together at the start of
+// the next window. This converges total throughput tightly on the configured KB/s.
+class SpeedLimiter {
+  constructor() {
+    this.streams = new Set();
+    this.windowBytes = 0;
+    this.windowStart = Date.now();
+    this.paused = false;
+    this.resumeTimer = null;
+  }
+
+  get enabled() {
+    return !!(storage.settings.speedLimiterEnabled && storage.settings.speedLimitKBps > 0);
+  }
+
+  get limitBytesPerSec() {
+    return (storage.settings.speedLimitKBps || 0) * 1024;
+  }
+
+  register(res) {
+    this.streams.add(res);
+  }
+
+  unregister(res) {
+    this.streams.delete(res);
+  }
+
+  // Account for received bytes; pauses all live streams when the budget is spent.
+  consume(res, bytes) {
+    if (!this.enabled) {
+      if (this.paused) this.resumeAll();
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.windowStart >= 1000) {
+      this.windowBytes = 0;
+      this.windowStart = now;
+    }
+    this.windowBytes += bytes;
+
+    if (this.windowBytes > this.limitBytesPerSec && !this.paused) {
+      this.pauseAll();
+      const wait = Math.max(50, 1000 - (Date.now() - this.windowStart));
+      this.resumeTimer = setTimeout(() => this.resumeAll(), wait);
+    }
+  }
+
+  pauseAll() {
+    this.paused = true;
+    for (const res of this.streams) {
+      try { res.pause(); } catch (e) {}
+    }
+  }
+
+  resumeAll() {
+    if (this.resumeTimer) {
+      clearTimeout(this.resumeTimer);
+      this.resumeTimer = null;
+    }
+    this.paused = false;
+    this.windowBytes = 0;
+    this.windowStart = Date.now();
+    for (const res of this.streams) {
+      try { res.resume(); } catch (e) {}
+    }
+  }
+}
+
+const globalSpeedLimiter = new SpeedLimiter();
+
+function applySpeedLimit(res, bytes) {
+  globalSpeedLimiter.consume(res, bytes);
+}
+
 class DownloadTask extends EventEmitter {
   constructor(options) {
     super();
@@ -774,21 +854,26 @@ class DownloadTask extends EventEmitter {
       this.activeStreams.push(fileStream);
 
       let isFinished = false;
+      let currentRes = null;
       const markDone = () => {
         if (!isFinished) {
           isFinished = true;
           seg.status = 'done';
+          if (currentRes) globalSpeedLimiter.unregister(currentRes);
           try { fileStream.close(); } catch {}
           resolve();
         }
       };
 
       const req = client.request(options, (res) => {
+        currentRes = res;
         if (res.statusCode !== 206 && res.statusCode !== 200) {
           fileStream.close();
           seg.status = 'error';
           return reject(new Error(`Segment ${seg.index} HTTP ${res.statusCode}`));
         }
+
+        globalSpeedLimiter.register(res);
 
         res.on('data', (chunk) => {
           if (this.isPaused || this.isCancelled) {
@@ -814,6 +899,8 @@ class DownloadTask extends EventEmitter {
             req.destroy();
             return markDone();
           }
+
+          applySpeedLimit(res, toWrite.length);
         });
 
         res.on('end', () => {
@@ -826,6 +913,7 @@ class DownloadTask extends EventEmitter {
 
         fileStream.on('error', (err) => {
           seg.status = 'error';
+          if (currentRes) globalSpeedLimiter.unregister(currentRes);
           reject(err);
         });
       });
@@ -833,6 +921,7 @@ class DownloadTask extends EventEmitter {
       this.activeRequests.push(req);
 
       req.on('error', (err) => {
+        if (currentRes) globalSpeedLimiter.unregister(currentRes);
         if (this.isPaused || this.isCancelled || isFinished) return resolve();
         seg.status = 'error';
         reject(err);
@@ -879,10 +968,15 @@ class DownloadTask extends EventEmitter {
         flags: currentDownloaded > 0 ? 'a' : 'w'
       });
 
+      let singleRes = null;
+
       const req = client.request(options, (res) => {
+        singleRes = res;
         if (this.totalBytes === 0 && res.headers['content-length']) {
           this.totalBytes = parseInt(res.headers['content-length'], 10);
         }
+
+        globalSpeedLimiter.register(res);
 
         res.on('data', (chunk) => {
           if (this.isPaused || this.isCancelled) {
@@ -892,11 +986,13 @@ class DownloadTask extends EventEmitter {
           }
           this.downloadedBytes += chunk.length;
           this.speedSampleBytes += chunk.length;
+          applySpeedLimit(res, chunk.length);
         });
 
         res.pipe(fileStream);
 
         fileStream.on('finish', async () => {
+          globalSpeedLimiter.unregister(res);
           fileStream.close();
           if (this.isPaused || this.isCancelled) return resolve();
           
@@ -914,12 +1010,16 @@ class DownloadTask extends EventEmitter {
           resolve();
         });
 
-        fileStream.on('error', (err) => reject(err));
+        fileStream.on('error', (err) => {
+          if (singleRes) globalSpeedLimiter.unregister(singleRes);
+          reject(err);
+        });
       });
 
       this.activeRequests.push(req);
 
       req.on('error', (err) => {
+        if (singleRes) globalSpeedLimiter.unregister(singleRes);
         if (this.isPaused || this.isCancelled) return resolve();
         reject(err);
       });

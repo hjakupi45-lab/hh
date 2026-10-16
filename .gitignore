@@ -15,6 +15,7 @@ Thumbs.db
 *.part*
 *.log
 dist/
+build/
 .cache/
 mac-cache/
 bin/*.exe

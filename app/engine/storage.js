@@ -32,6 +32,16 @@ class StorageManager {
       showDownloadCompleteDialog: true,
       firstRunWizardShown: false,
       port: 9462,
+      scheduler: {
+        enabled: false,
+        startTime: '01:00',
+        stopTime: '06:00',
+        onStart: 'resume-queue',
+        onStop: 'stop-queue',
+        shutdownOnComplete: false,
+        lastStartKey: null,
+        lastStopKey: null
+      },
       interceptExtensions: [
         '3GP', '7Z', 'AAC', 'ACE', 'AIF', 'APK', 'ARJ', 'ASF', 'AVI', 'BIN',
         'BZ2', 'DMG', 'DOC', 'DOCX', 'EXE', 'FLV', 'GZ', 'GZIP', 'IMG', 'ISO',

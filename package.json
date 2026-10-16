@@ -8,11 +8,13 @@
     "start": "electron app/main.js",
     "dev": "electron app/main.js",
     "generate-icons": "node scripts/generate-icons.js",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --win nsis",
-    "dist:win": "electron-builder --win nsis",
-    "dist:mac": "electron-builder --mac",
-    "dist:all": "npm run dist:win && npm run dist:mac"
+    "build:extensions": "node scripts/build-extensions.js",
+    "test:scheduler": "node scripts/test-scheduler.js",
+    "pack": "npm run build:extensions && electron-builder --dir",
+    "dist": "npm run build:extensions && electron-builder --win nsis",
+    "dist:win": "npm run build:extensions && electron-builder --win nsis",
+    "dist:mac": "npm run build:extensions && electron-builder --mac",
+    "dist:all": "npm run build:extensions && electron-builder --win nsis && electron-builder --mac"
   },
   "build": {
     "appId": "com.haris.electronbyharis",
@@ -28,6 +30,13 @@
       {
         "from": "extension",
         "to": "extension",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/extensions/firefox",
+        "to": "extension-firefox",
         "filter": [
           "**/*"
         ]

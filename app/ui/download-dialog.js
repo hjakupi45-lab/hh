@@ -42,6 +42,18 @@ async function initDialog() {
   setupEventListeners();
 
   try {
+    const settings = await window.idmApi.getSettings();
+    const chkLimiter = document.getElementById('chk-speed-limiter');
+    const inputLimit = document.getElementById('input-speed-limit');
+    if (settings) {
+      if (chkLimiter) chkLimiter.checked = !!settings.speedLimiterEnabled;
+      if (inputLimit && settings.speedLimitKBps > 0) inputLimit.value = settings.speedLimitKBps;
+    }
+  } catch (err) {
+    console.error('Failed to load settings:', err);
+  }
+
+  try {
     currentTask = await window.idmApi.getDownload(taskId);
     if (currentTask) {
       updateUI(currentTask);
@@ -166,6 +178,15 @@ function setupEventListeners() {
     const limit = parseInt(document.getElementById('input-speed-limit').value, 10) || 500;
     window.idmApi.saveSettings({
       speedLimiterEnabled: enabled,
+      speedLimitKBps: limit
+    });
+  });
+
+  document.getElementById('input-speed-limit').addEventListener('change', (e) => {
+    const limit = parseInt(e.target.value, 10) || 500;
+    const chk = document.getElementById('chk-speed-limiter');
+    window.idmApi.saveSettings({
+      speedLimiterEnabled: chk ? chk.checked : true,
       speedLimitKBps: limit
     });
   });

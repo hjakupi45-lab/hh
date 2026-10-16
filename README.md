@@ -26,6 +26,10 @@ A high-performance Windows desktop application and Google Chrome extension built
     * Slices files dynamically into $N$ concurrent chunk streams (configurable from 1 to 32 connections).
     * Atomic part assembly without corrupting disk sectors.
     * Full Pause & Resume capability: keeps track of downloaded bytes even across network dropouts.
+  * **Global Speed Limiter**: caps aggregate throughput across every parallel stream (pauses all connections together).
+  * **Download Scheduler & Queue**: start/stop the main queue at set times (cross-midnight windows supported), with optional
+    exit / shutdown / hibernate / sleep actions and "turn off computer when all downloads complete".
+  * **Minimize to Tray**: closing the window keeps the background bridge alive; exit from the tray or File menu.
 
 ---
 
@@ -40,8 +44,13 @@ A high-performance Windows desktop application and Google Chrome extension built
     * Right-click any link, image, or video: **"Download with IDM"**.
     * Right-click anywhere on the page: **"Download all links with IDM"** (Batch Grabber).
   * **Extension Popup**:
-    * Real-time connection ping to desktop IDM engine.
-    * Interception toggles and quick action to grab all page links.
+  * Real-time connection ping to desktop IDM engine.
+  * Interception toggles and quick action to grab all page links.
+  * **Native desktop notifications** when a download is captured by the engine.
+
+### 🌍 Multi-Browser Support
+* One shared extension source runs on **Chrome, Edge, Brave, Opera and Firefox** via a compatibility polyfill.
+* `npm run build:extensions` produces ready-to-load packages under `build/extensions/{chrome,edge,firefox}`.
 
 ---
 
@@ -133,6 +142,8 @@ All core systems have automated verification tests:
 | `node scripts/test-segmented.js` | Verifies 10MB 8-segment parallel chunking & byte integrity | ✅ Passed |
 | `node scripts/test-resume.js` | Verifies mid-stream Pause & Resume without byte loss | ✅ Passed |
 | `node scripts/test-extension-integration.js` | Verifies Chrome Extension API & WebSocket endpoints | ✅ Passed |
+| `node scripts/test-scheduler.js` | Verifies scheduler config, window math & edge cases | ✅ Passed |
+| `node scripts/test-limiter.js` | Verifies the global speed limiter throttles throughput | ✅ Passed |
 
 ---
 

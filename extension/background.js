@@ -210,10 +210,24 @@ async function sendBatchToIdm(items, referer) {
 }
 
 function showNotification(title, message) {
-  // Set badge
-  chrome.action.setBadgeText({ text: '!' });
-  chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
-  setTimeout(() => chrome.action.setBadgeText({ text: '' }), 4000);
+  // Badge pulse
+  try {
+    chrome.action.setBadgeText({ text: '!' });
+    chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
+    setTimeout(() => chrome.action.setBadgeText({ text: '' }), 4000);
+  } catch (e) {}
+
+  // Native desktop notification (falls back silently if unavailable)
+  try {
+    if (chrome.notifications && chrome.notifications.create) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: title || 'Electron by Haris',
+        message: message || 'Download started'
+      });
+    }
+  } catch (e) {}
 }
 
 // Listen to messages from content script or popup

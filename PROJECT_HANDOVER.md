@@ -286,3 +286,71 @@ node scripts/test-resume.js
 * **Detects Installed Browsers**: Google Chrome, Microsoft Edge, Brave, Opera/Opera GX, and Mozilla Firefox.
 * **1-Click Integration**: Launches the browser directly to its extensions page (`chrome://extensions`, `edge://extensions`), opens the bundled extension folder in File Explorer, and copies the folder path to the clipboard.
 * **Diagnostic Bridge**: Features a "Test Extension Bridge" button confirming live communication on port `9462`.
+
+---
+
+## 11. Download Scheduler & Queue Engine (`app/engine/scheduler.js`)
+
+### 11.1. Scheduler Engine
+* New module `app/engine/scheduler.js` (an `EventEmitter`) evaluates the schedule every 20 seconds.
+* **Window Model**: A `[startTime → stopTime)` window in `HH:MM` supports windows that cross midnight (e.g. `23:00 → 02:00`).
+* **Cold-Start Resume**: If the app launches while already inside the scheduled window, the main queue resumes automatically.
+* **Guarded Firing**: `lastStartKey`/`lastStopKey` (per-date keys) guarantee each boundary fires exactly once per day.
+* **Events**: emits `schedule-start` and `schedule-stop`, handled in `main.js`.
+
+### 11.2. Queue Actions on Stop
+`runSchedulerAction(action)` executes the configured stop behaviour:
+`stop-queue` · `exit-app` · `shutdown` (`shutdown /s /t 60`) · `hibernate` (`shutdown /h`) · `sleep`.
+
+### 11.3. Scheduler Dialog (`app/ui/scheduler-dialog.html` / `.js`)
+* Opened from the toolbar **Scheduler** button (`btn-scheduler`), the tray menu, or the main process.
+* Configure: enable toggle, start time, start action, stop time, stop action and **"Turn off computer when all downloads are complete"**.
+* Live status line shows the current time, configured window and whether the window is currently active.
+
+### 11.4. Queue Semantics
+* The sidebar **"Main download queue"** and the toolbar **Start Queue / Stop Queue** buttons map to `resumeAll()` / `stopAll()`.
+* Downloads added via **"Download Later"** enter the queue in the `queued` state and start when the queue is started (manually or by the scheduler).
+
+---
+
+## 12. Multi-Browser Support
+
+### 12.1. Shared Source + Polyfill (`extension/polyfill.js`)
+* The extension is authored once in `extension/`. `polyfill.js` promotes Firefox's promise-based
+  `browser.*` API onto the `chrome.*` namespace and re-adds callback support, so the same code runs
+  on Chromium browsers and Firefox. On Chromium the polyfill is a no-op.
+
+### 12.2. Build Script (`scripts/build-extensions.js`, `npm run build:extensions`)
+Generates per-browser packages from the shared source:
+| Output | Target |
+|---|---|
+| `build/extensions/chrome` | Chrome / Chromium (MV3 service worker) |
+| `build/extensions/edge`   | Microsoft Edge (Chromium package) |
+| `build/extensions/firefox`| Firefox (MV3 event page `background.scripts` + `browser_specific_settings.gecko`) |
+
+### 12.3. Installer Bundling
+* `extraResources` in `package.json` bundles the Firefox build to `resources/extension-firefox`.
+* `getExtensionPath(browserId)` resolves the correct folder (Chromium vs Firefox) for dev and packaged builds.
+* The setup wizard copies the browser-appropriate path and shows Firefox-specific "Load Temporary Add-on…" instructions.
+
+---
+
+## 13. Bug Fixes & Polish (this iteration)
+
+1. **`/test` endpoint crash fixed** — `app/server/apiServer.js` used `path.join` without requiring `path`; the import was added.
+2. **Speed limiter now enforced** — previously exposed in Settings but never applied. `app/engine/downloader.js`
+   gained a global `SpeedLimiter` token-budget that pauses **all** live streams together, tightly capping aggregate throughput.
+   Verified: 65 MB/s unlimited → ~370 KB/s with a 256 KB/s cap (`scripts/test-limiter.js`).
+3. **Minimize-to-tray** — `main.js` now creates a system `Tray` (Open / Add URL / Scheduler / Exit); closing the main
+   window hides to tray while the bridge keeps running. Use the tray **Exit** or **File** menu to terminate.
+4. **Real desktop notifications** — the extension's `showNotification` now raises a native Chrome notification
+   (plus the toolbar badge), with the `notifications` permission added.
+
+---
+
+## 14. New Test Suites
+
+```powershell
+node scripts/test-scheduler.js   # Scheduler config, window math, zero-length edge case
+node scripts/test-limiter.js     # Speed limiter throttling (baseline vs capped)
+```

@@ -21,18 +21,24 @@ contextBridge.exposeInMainWorld('idmApi', {
   openFolder: (filePath) => ipcRenderer.invoke('open-folder', filePath),
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
 
+  // Scheduler
+  getScheduler: () => ipcRenderer.invoke('get-scheduler'),
+  saveScheduler: (patch) => ipcRenderer.invoke('save-scheduler', patch),
+  openSchedulerDialog: () => ipcRenderer.invoke('open-scheduler-dialog'),
+
   // Dialog Controls
   openAddUrlDialog: () => ipcRenderer.invoke('open-add-url-dialog'),
   openOptionsDialog: () => ipcRenderer.invoke('open-options-dialog'),
   openDownloadProgressDialog: (id) => ipcRenderer.invoke('open-download-progress-dialog', id),
   closeCurrentWindow: () => ipcRenderer.invoke('close-current-window'),
   minimizeCurrentWindow: () => ipcRenderer.invoke('minimize-current-window'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
 
   // Browser Integration & Setup Wizard
   detectBrowsers: () => ipcRenderer.invoke('detect-browsers'),
   integrateBrowser: (browserId) => ipcRenderer.invoke('integrate-browser', browserId),
-  getExtensionPath: () => ipcRenderer.invoke('get-extension-path'),
-  openExtensionFolder: () => ipcRenderer.invoke('open-extension-folder'),
+  getExtensionPath: (browserId) => ipcRenderer.invoke('get-extension-path', browserId),
+  openExtensionFolder: (browserId) => ipcRenderer.invoke('open-extension-folder', browserId),
   openIntegrationWizard: () => ipcRenderer.invoke('open-integration-wizard'),
   setWindowsAutoStart: (enable) => ipcRenderer.invoke('set-windows-auto-start', enable),
 
@@ -49,7 +55,9 @@ contextBridge.exposeInMainWorld('idmApi', {
       'task-deleted',
       'task-error',
       'active-task-data',
-      'settings-updated'
+      'settings-updated',
+      'scheduler-updated',
+      'scheduler-fired'
     ];
     if (validChannels.includes(channel)) {
       const subscription = (event, ...args) => listener(...args);

@@ -9,11 +9,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const chkDontShow = document.getElementById('chk-dont-show-again');
   const chkAutoStart = document.getElementById('chk-auto-start-windows');
 
-  // 1. Get Extension folder path
-  let extPath = '';
+  let currentBrowserId = 'chrome';
+
+  // 1. Get default (Chromium) extension folder path
   try {
-    extPath = await window.idmApi.getExtensionPath();
-    pathInput.value = extPath;
+    pathInput.value = await window.idmApi.getExtensionPath('chrome');
   } catch (e) {
     pathInput.value = 'c:\\...\\extension';
   }
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderBrowsers(browsers) {
     browsersList.innerHTML = '';
     browsers.forEach(b => {
+      const isFirefox = b.id === 'firefox';
       const card = document.createElement('div');
       card.className = 'browser-card';
       card.innerHTML = `
@@ -49,11 +50,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       const btn = card.querySelector('.btn-integrate');
       if (b.installed) {
         btn.addEventListener('click', async () => {
+          currentBrowserId = b.id;
           btn.textContent = 'Opening...';
-          await window.idmApi.integrateBrowser(b.id);
-          setTimeout(() => {
-            btn.textContent = '✓ Opened';
-          }, 800);
+
+          try {
+            const bPath = await window.idmApi.getExtensionPath(b.id);
+            pathInput.value = bPath;
+            if (navigator.clipboard) {
+              navigator.clipboard.writeText(bPath);
+            }
+            await window.idmApi.integrateBrowser(b.id);
+            setTimeout(() => {
+              btn.textContent = isFirefox ? '✓ Path copied' : '✓ Opened';
+            }, 700);
+          } catch (e) {
+            btn.textContent = 'Integrate';
+          }
         });
       }
 
@@ -63,8 +75,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Copy Path action
   btnCopyPath.addEventListener('click', () => {
-    if (extPath) {
-      navigator.clipboard.writeText(extPath);
+    if (pathInput.value) {
+      navigator.clipboard.writeText(pathInput.value);
       btnCopyPath.textContent = '✓ Copied!';
       setTimeout(() => btnCopyPath.textContent = '📋 Copy', 2000);
     }
@@ -72,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Open Folder action
   btnOpenFolder.addEventListener('click', () => {
-    window.idmApi.openExtensionFolder();
+    window.idmApi.openExtensionFolder(currentBrowserId);
   });
 
   // Test Extension Bridge

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const path = require('path');
 const { WebSocketServer } = require('ws');
 const downloadManager = require('../engine/downloader');
 const storage = require('../engine/storage');

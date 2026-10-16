@@ -77,6 +77,26 @@ async function initApp() {
   } catch (err) {
     console.error('Failed to initialize app:', err);
   }
+
+  try {
+    const sched = await window.idmApi.getScheduler();
+    updateSchedulerIndicator(sched);
+  } catch (err) {
+    console.error('Failed to load scheduler status:', err);
+  }
+}
+
+function updateSchedulerIndicator(status) {
+  const el = document.getElementById('status-scheduler');
+  if (!el || !status) return;
+  const cfg = status.config || {};
+  if (!cfg.enabled) {
+    el.textContent = 'Scheduler: Off';
+    el.style.color = '';
+    return;
+  }
+  el.textContent = `Scheduler: ${cfg.startTime}-${cfg.stopTime}${status.inWindow ? ' (active)' : ''}`;
+  el.style.color = status.inWindow ? '#15803d' : '';
 }
 
 // Filter downloads
@@ -383,7 +403,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('btn-scheduler').addEventListener('click', () => {
-    alert('IDM Scheduler: Automatically start/stop downloads or disconnect modem at designated times.');
+    window.idmApi.openSchedulerDialog();
   });
 
   document.getElementById('btn-start-queue').addEventListener('click', () => {
@@ -460,6 +480,11 @@ function setupEventListeners() {
   document.getElementById('menu-tasks').addEventListener('click', () => {
     window.idmApi.openAddUrlDialog();
   });
+  document.getElementById('menu-file').addEventListener('click', () => {
+    if (window.idmApi.quitApp && confirm('Exit Electron by Haris? Background downloads will stop.')) {
+      window.idmApi.quitApp();
+    }
+  });
   document.getElementById('menu-downloads').addEventListener('click', () => {
     window.idmApi.openOptionsDialog();
   });
@@ -512,6 +537,16 @@ function setupEventListeners() {
     if (selectedTaskId === id) selectedTaskId = null;
     renderDownloads();
     updateBadges();
+  });
+
+  window.idmApi.on('scheduler-updated', (status) => {
+    updateSchedulerIndicator(status);
+  });
+
+  window.idmApi.on('scheduler-fired', (data) => {
+    if (window.idmSounds) {
+      window.idmSounds.playAlert();
+    }
   });
 
   window.idmApi.on('task-error', ({ id, error }) => {
