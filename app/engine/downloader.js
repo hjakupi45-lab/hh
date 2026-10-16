@@ -519,6 +519,53 @@ class DownloadTask extends EventEmitter {
     return '';
   }
 
+  findJsRuntime() {
+    if (DownloadTask._cachedJsRuntime) return DownloadTask._cachedJsRuntime;
+
+    const isWin = process.platform === 'win32';
+    const denoName = isWin ? 'deno.exe' : 'deno';
+    const nodeName = isWin ? 'node.exe' : 'node';
+
+    const bundledDirs = [
+      process.resourcesPath ? path.join(process.resourcesPath, 'bin') : null,
+      path.join(__dirname, '../../bin'),
+      path.join(process.cwd(), 'bin')
+    ].filter(Boolean);
+
+    // 1. Bundled deno (yt-dlp's preferred/default runtime)
+    for (const dir of bundledDirs) {
+      const p = path.join(dir, denoName);
+      if (fs.existsSync(p)) {
+        console.log(`[yt-dlp] Using bundled Deno JS runtime: ${p}`);
+        DownloadTask._cachedJsRuntime = ['--js-runtimes', `deno:${p}`];
+        return DownloadTask._cachedJsRuntime;
+      }
+    }
+
+    // 2. Bundled node
+    for (const dir of bundledDirs) {
+      const p = path.join(dir, nodeName);
+      if (fs.existsSync(p)) {
+        console.log(`[yt-dlp] Using bundled Node JS runtime: ${p}`);
+        DownloadTask._cachedJsRuntime = ['--js-runtimes', `node:${p}`];
+        return DownloadTask._cachedJsRuntime;
+      }
+    }
+
+    // 3. Node on system PATH
+    const { execFileSync } = require('child_process');
+    try {
+      execFileSync(isWin ? 'where' : 'which', [nodeName], { timeout: 5000, stdio: 'pipe' });
+      console.log('[yt-dlp] Using system Node JS runtime');
+      DownloadTask._cachedJsRuntime = ['--js-runtimes', 'node:node'];
+      return DownloadTask._cachedJsRuntime;
+    } catch (e) {}
+
+    console.warn('[yt-dlp] No JS runtime (deno/node) found; YouTube formats may be limited');
+    DownloadTask._cachedJsRuntime = [];
+    return DownloadTask._cachedJsRuntime;
+  }
+
   async startYouTubeDownload() {
     return this.startMediaStreamDownload();
   }
@@ -543,6 +590,14 @@ class DownloadTask extends EventEmitter {
       '--fragment-retries', '10'
     ];
 
+    // yt-dlp needs a JS runtime + EJS components to fully extract YouTube
+    // formats; without them extraction is degraded and format selection can
+    // fail with "Requested format is not available".
+    const extractionArgs = [
+      ...this.findJsRuntime(),
+      '--remote-components', 'ejs:github'
+    ];
+
     let cookieArgs = [];
     if (this.cookies && this.cookies.trim()) {
       cookieArgs = ['--add-header', `Cookie:${this.cookies}`];
@@ -556,6 +611,7 @@ class DownloadTask extends EventEmitter {
       args = [
         ...baseArgs,
         ...turboArgs,
+        ...extractionArgs,
         ...cookieArgs,
         ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-x',
@@ -573,6 +629,7 @@ class DownloadTask extends EventEmitter {
       args = [
         ...baseArgs,
         ...turboArgs,
+        ...extractionArgs,
         ...cookieArgs,
         ...(ffmpegBin ? ['--ffmpeg-location', ffmpegBin] : []),
         '-f', formatArg,
